@@ -122,7 +122,7 @@
         // PEGA AQUÍ TU CONFIGURACIÓN DE FIREBASE
         // Reemplaza este objeto de ejemplo con el que copiaste de tu consola de Firebase
         const firebaseConfig = {
-          apiKey: "AIzaSyCu7P0nV5vSeqvwLtfUpHIpnAgGu9Dx3mY",
+  apiKey: "AIzaSyCu7P0nV5vSeqvwLtfUpHIpnAgGu9Dx3mY",
   authDomain: "control-asistencia-pruebas.firebaseapp.com",
   projectId: "control-asistencia-pruebas",
   storageBucket: "control-asistencia-pruebas.firebasestorage.app",
@@ -272,12 +272,12 @@
             } catch (error) { console.error("Error al registrar: ", error); }
         };
 
-        const QR_LIFESPAN_MS = 7000;
+        const QR_LIFESPAN_MS = 15000; // <-- AUMENTADO A 15 SEGUNDOS
         window.showQrCode = (meetingId, meetingName) => {
             document.getElementById('modal-title').textContent = `QR para: ${meetingName}`;
             const modalBody = document.getElementById('modal-body');
             modalBody.innerHTML = `
-                <p class="text-center mb-4">Escanea este código. Cambia cada ${QR_LIFESPAN_MS / 1000} segundos.</p>
+                <p class="text-center text-gray-600 mb-4">Escanea este código. Se actualiza automáticamente cada ${QR_LIFESPAN_MS / 1000} segundos.</p>
                 <div id="qrcode-container" class="flex justify-center p-4 bg-white border rounded-lg relative">
                     <div id="qrcode"></div>
                     <p id="qr-expired-text" class="absolute inset-0 flex items-center justify-center bg-white bg-opacity-90 text-red-500 font-bold hidden">CADUCADO</p>
