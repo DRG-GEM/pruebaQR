@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Asistencia con QR Dinámico</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .modal { transition: opacity 0.25s ease; }
+        body.modal-active { overflow: hidden; }
+        .lds-dual-ring { display: inline-block; width: 80px; height: 80px; }
+        .lds-dual-ring:after {
+            content: " "; display: block; width: 64px; height: 64px; margin: 8px;
+            border-radius: 50%; border: 6px solid #fff;
+            border-color: #4f46e5 transparent #4f46e5 transparent;
+            animation: lds-dual-ring 1.2s linear infinite;
+        }
+        @keyframes lds-dual-ring { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        #qr-timer-bar {
+            height: 4px;
+            background-color: #4f46e5;
+            width: 100%;
+            transition: width 1s linear;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <!-- Contenedor Principal -->
+    <div id="app" class="container mx-auto p-4 md:p-8 max-w-4xl">
+        <div id="loading-screen" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50 p-4">
+             <div class="lds-dual-ring"></div>
+        </div>
+
+        <!-- Vista de Selección de Rol -->
+        <div id="role-selection-view">
+            <div class="bg-white p-8 rounded-2xl shadow-lg text-center">
+                <h1 class="text-3xl font-bold text-indigo-600 mb-4">Control de Asistencia</h1>
+                <p class="text-gray-600 mb-8">Selecciona tu rol para continuar.</p>
+                <div class="flex flex-col md:flex-row gap-4 justify-center">
+                    <button onclick="showView('admin-view')" class="bg-indigo-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-indigo-700 transition-colors shadow-md">Soy Administrador/a</button>
+                    <button onclick="showView('teacher-view')" class="bg-gray-200 text-gray-800 font-bold py-3 px-6 rounded-lg hover:bg-gray-300 transition-colors shadow-md">Soy Profesor/a</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Vista del Administrador -->
+        <div id="admin-view" class="hidden">
+            <div class="flex justify-between items-center mb-6">
+                <h1 class="text-2xl font-bold text-indigo-600">Panel de Administrador</h1>
+                 <button onclick="showView('role-selection-view')" class="text-indigo-600 hover:underline">&larr; Volver</button>
+            </div>
+            <div class="bg-white p-6 rounded-2xl shadow-lg">
+                <h2 class="text-xl font-semibold mb-4">Crear Nueva Sesión de Asistencia</h2>
+                <div class="flex gap-4">
+                    <input type="text" id="meeting-name" placeholder="Nombre de la reunión (Ej: Claustro Mayo)" class="flex-grow p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                    <button onclick="createMeeting()" class="bg-indigo-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-indigo-700 transition-colors">Crear</button>
+                </div>
+            </div>
+            <div class="bg-white p-6 rounded-2xl shadow-lg mt-6">
+                <h2 class="text-xl font-semibold mb-4">Sesiones Creadas</h2>
+                <div id="meetings-list" class="space-y-4"></div>
+            </div>
+            <div id="teacher-lookup-view" class="bg-white p-6 rounded-2xl shadow-lg mt-6">
+                <h2 class="text-xl font-semibold mb-4">Consulta por Profesor</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                    <div class="md:col-span-1">
+                        <label for="teacher-select" class="block text-sm font-medium text-gray-700">Profesor</label>
+                        <select id="teacher-select" class="mt-1 block w-full p-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"></select>
+                    </div>
+                    <div class="md:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-4">
+                         <div>
+                            <label for="start-date" class="block text-sm font-medium text-gray-700">Desde</label>
+                            <input type="date" id="start-date" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm">
+                         </div>
+                         <div>
+                            <label for="end-date" class="block text-sm font-medium text-gray-700">Hasta</label>
+                            <input type="date" id="end-date" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm">
+                         </div>
+                         <button onclick="getTeacherAttendance()" class="bg-blue-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-600 self-end">Consultar</button>
+                    </div>
+                </div>
+                <div id="teacher-attendance-results" class="mt-6"></div>
+            </div>
+        </div>
+
+        <!-- Vista del Profesor -->
+        <div id="teacher-view" class="hidden">
+            <div class="flex justify-between items-center mb-6">
+                <h1 class="text-2xl font-bold text-indigo-600">Registro de Asistencia</h1>
+                <button onclick="showView('role-selection-view')" class="text-indigo-600 hover:underline">&larr; Volver</button>
+            </div>
+            <div id="teacher-status-message" class="bg-white p-8 rounded-2xl shadow-lg text-center"></div>
+        </div>
+    </div>
+
+    <!-- Modal para QR y Lista de Asistencia -->
+    <div id="modal" class="modal fixed w-full h-full top-0 left-0 flex items-center justify-center hidden">
+        <div class="modal-overlay absolute w-full h-full bg-gray-900 opacity-50" onclick="closeModal()"></div>
+        <div class="modal-container bg-white w-11/12 md:max-w-2xl mx-auto rounded-2xl shadow-lg z-50 overflow-y-auto">
+            <div class="modal-content py-4 text-left px-6">
+                <div class="flex justify-between items-center pb-3">
+                    <p id="modal-title" class="text-2xl font-bold"></p>
+                    <div class="modal-close cursor-pointer z-50" onclick="closeModal()">
+                        <svg class="fill-current text-black" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 18 18"><path d="M14.53 4.53l-1.06-1.06L9 7.94 4.53 3.47 3.47 4.53 7.94 9l-4.47 4.47 1.06 1.06L9 10.06l4.47 4.47 1.06-1.06L10.06 9z"></path></svg>
+                    </div>
+                </div>
+                <div id="modal-body" class="my-5"></div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, addDoc, setDoc, getDoc, deleteDoc, getDocs, collection, onSnapshot, query, where, serverTimestamp, Timestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // *******************************************************************
+        // PEGA AQUÍ TU CONFIGURACIÓN DE FIREBASE
+        // Reemplaza este objeto de ejemplo con el que copiaste de tu consola de Firebase
+        const firebaseConfig = {
+          apiKey: "AIzaSyCu7P0nV5vSeqvwLtfUpHIpnAgGu9Dx3mY",
+  authDomain: "control-asistencia-pruebas.firebaseapp.com",
+  projectId: "control-asistencia-pruebas",
+  storageBucket: "control-asistencia-pruebas.firebasestorage.app",
+  messagingSenderId: "429481399686",
+  appId: "1:429481399686:web:955659d3e70826b22a0807",
+  measurementId: "G-104TMJF8R4"
+        };
+        // *******************************************************************
+
+        let app, auth, db, userId;
+        let qrInterval;
+        
+        document.addEventListener('DOMContentLoaded', () => {
+             if (!firebaseConfig.apiKey || firebaseConfig.apiKey === "TU_API_KEY") {
+                document.getElementById('loading-screen').innerHTML = `<div class="bg-white p-8 rounded-lg shadow-xl text-center"><h2 class="text-2xl font-bold text-red-600">Error de Configuración</h2><p class="mt-4 text-gray-700">Por favor, pega tu configuración de Firebase en el archivo HTML para iniciar la aplicación.</p></div>`;
+                return;
+             }
+
+            app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+
+            onAuthStateChanged(auth, async (user) => {
+                if (user) {
+                    userId = user.uid;
+                    initializeAppState();
+                } else {
+                     try {
+                        await signInAnonymously(auth);
+                     } catch (error) {
+                        console.error("Auth Error:", error);
+                        document.getElementById('loading-screen').innerHTML = `<div class="text-white text-center">Error de conexión con Firebase. Revisa las reglas de tu base de datos.</div>`;
+                    }
+                }
+            });
+        });
+        
+        function initializeAppState() {
+            document.getElementById('loading-screen').style.display = 'none';
+            setupUIFromURL();
+        }
+
+        function setupUIFromURL() {
+            const params = new URLSearchParams(window.location.search);
+            if (params.has('meeting') && params.has('token')) {
+                validateTokenAndShowTeacherView(params.get('meeting'), params.get('token'));
+            } else {
+                showView('role-selection-view');
+                listenForMeetings();
+                listenForTeachers();
+            }
+        }
+        
+        window.showView = (viewId) => {
+            ['role-selection-view', 'admin-view', 'teacher-view'].forEach(id => {
+                document.getElementById(id).classList.add('hidden');
+            });
+            document.getElementById(viewId).classList.remove('hidden');
+        };
+
+        async function validateTokenAndShowTeacherView(meetingId, tokenId) {
+            showView('teacher-view');
+            const statusDiv = document.getElementById('teacher-status-message');
+            statusDiv.innerHTML = '<p>Validando código QR...</p>';
+
+            const tokenRef = doc(db, `meetings/${meetingId}/validTokens/${tokenId}`);
+            const tokenSnap = await getDoc(tokenRef);
+
+            if (tokenSnap.exists() && tokenSnap.data().expiresAt.toMillis() > Date.now()) {
+                await deleteDoc(tokenRef);
+                const meetingRef = doc(db, `meetings/${meetingId}`);
+                const meetingSnap = await getDoc(meetingRef);
+                const meetingName = meetingSnap.exists() ? meetingSnap.data().name : 'Reunión desconocida';
+                const savedName = localStorage.getItem('teacherName');
+                if (savedName) {
+                    statusDiv.innerHTML = `
+                        <p class="text-xl font-semibold mb-4 text-gray-700">Asistencia para: "${meetingName}"</p>
+                        <p class="text-2xl text-gray-800 mb-2">¿Eres <strong class="font-bold">${savedName}</strong>?</p>
+                        <p class="text-gray-500 mb-6">Confirma para registrar tu asistencia.</p>
+                        <button onclick="recordAttendance('${meetingId}', true)" class="w-full max-w-md mx-auto bg-green-500 text-white font-bold py-3 px-6 rounded-lg hover:bg-green-600 transition-colors text-lg">Sí, confirmar asistencia</button>
+                        <button onclick="showChangeTeacherForm('${meetingId}', '${meetingName}')" class="mt-4 text-sm text-indigo-600 hover:underline">No soy yo / Cambiar nombre</button>
+                    `;
+                } else {
+                    showChangeTeacherForm(meetingId, meetingName);
+                }
+            } else {
+                statusDiv.innerHTML = '<p class="text-red-500 font-bold text-xl">Código QR caducado o inválido. Por favor, escanea el código actual en la pantalla.</p>';
+            }
+        }
+
+        window.showChangeTeacherForm = (meetingId, meetingName) => {
+             document.getElementById('teacher-status-message').innerHTML = `
+                <p class="text-xl font-semibold mb-4 text-gray-700">Asistencia para: "${meetingName}"</p>
+                <p class="text-gray-600 mb-6">Introduce tu nombre completo para firmar. Solo tendrás que hacerlo una vez.</p>
+                <input type="text" id="teacher-name-input" placeholder="Nombre y Apellidos" class="w-full max-w-md mx-auto p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none mb-6">
+                <button onclick="recordAttendance('${meetingId}', false)" class="w-full max-w-md mx-auto bg-green-500 text-white font-bold py-3 px-6 rounded-lg hover:bg-green-600 transition-colors text-lg">Confirmar Asistencia</button>
+            `;
+            document.getElementById('teacher-name-input').value = localStorage.getItem('teacherName') || '';
+            document.getElementById('teacher-name-input').focus();
+        }
+
+        window.recordAttendance = async (meetingId, isRecognized) => {
+            let name;
+            if (isRecognized) {
+                name = localStorage.getItem('teacherName');
+            } else {
+                const nameInput = document.getElementById('teacher-name-input');
+                name = nameInput.value.trim();
+                if (!name) {
+                    nameInput.classList.add('border-red-500');
+                    setTimeout(() => nameInput.classList.remove('border-red-500'), 2000);
+                    return;
+                }
+            }
+
+            let teacherId = localStorage.getItem('teacherId');
+            if (!teacherId || !isRecognized) {
+                const teachersCol = collection(db, `teachers`);
+                const q = query(teachersCol, where("name", "==", name));
+                const querySnapshot = await getDocs(q);
+                if (querySnapshot.empty) {
+                    const newTeacherRef = await addDoc(teachersCol, { name: name });
+                    teacherId = newTeacherRef.id;
+                } else {
+                    teacherId = querySnapshot.docs[0].id;
+                }
+            }
+
+            const meetingRef = doc(db, `meetings/${meetingId}`);
+            const meetingSnap = await getDoc(meetingRef);
+            if (!meetingSnap.exists()) return;
+            const meetingData = meetingSnap.data();
+
+            try {
+                const attendeesCol = collection(db, `meetings/${meetingId}/attendees`);
+                await addDoc(attendeesCol, { name, teacherId, timestamp: serverTimestamp() });
+                const attendedMeetingsRef = doc(db, `teachers/${teacherId}/attendedMeetings/${meetingId}`);
+                await setDoc(attendedMeetingsRef, { meetingName: meetingData.name, meetingDate: meetingData.createdAt });
+                localStorage.setItem('teacherName', name);
+                localStorage.setItem('teacherId', teacherId);
+                document.getElementById('teacher-status-message').innerHTML = `
+                    <svg class="mx-auto h-16 w-16 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <h2 class="text-2xl font-bold mt-4">¡Asistencia Registrada!</h2>
+                    <p class="text-gray-600 mt-2">Gracias. Tu asistencia para "${meetingData.name}" ha sido confirmada.</p>`;
+            } catch (error) { console.error("Error al registrar: ", error); }
+        };
+
+        const QR_LIFESPAN_MS = 7000;
+        window.showQrCode = (meetingId, meetingName) => {
+            document.getElementById('modal-title').textContent = `QR para: ${meetingName}`;
+            const modalBody = document.getElementById('modal-body');
+            modalBody.innerHTML = `
+                <p class="text-center mb-4">Escanea este código. Cambia cada ${QR_LIFESPAN_MS / 1000} segundos.</p>
+                <div id="qrcode-container" class="flex justify-center p-4 bg-white border rounded-lg relative">
+                    <div id="qrcode"></div>
+                    <p id="qr-expired-text" class="absolute inset-0 flex items-center justify-center bg-white bg-opacity-90 text-red-500 font-bold hidden">CADUCADO</p>
+                </div>
+                <div class="mt-2 h-1 bg-gray-200 rounded-full overflow-hidden"><div id="qr-timer-bar"></div></div>`;
+            openModal();
+
+            const generateAndDisplayDynamicQR = async () => {
+                const expiredText = document.getElementById('qr-expired-text');
+                if (expiredText) expiredText.classList.remove('hidden');
+                const tokenId = crypto.randomUUID();
+                const expiresAt = Timestamp.fromMillis(Date.now() + QR_LIFESPAN_MS);
+                const tokenRef = doc(db, `meetings/${meetingId}/validTokens`, tokenId);
+                await setDoc(tokenRef, { expiresAt });
+                const url = `${window.location.href.split('?')[0]}?meeting=${meetingId}&token=${tokenId}`;
+                const qrContainer = document.getElementById('qrcode');
+                if(qrContainer) {
+                    qrContainer.innerHTML = '';
+                    new QRCode(qrContainer, { text: url, width: 256, height: 256 });
+                }
+                 if (expiredText) expiredText.classList.add('hidden');
+                 const timerBar = document.getElementById('qr-timer-bar');
+                 if(timerBar) {
+                    timerBar.style.transition = 'none';
+                    timerBar.style.width = '100%';
+                    timerBar.offsetHeight; 
+                    timerBar.style.transition = `width ${QR_LIFESPAN_MS / 1000}s linear`;
+                    timerBar.style.width = '0%';
+                 }
+            };
+            generateAndDisplayDynamicQR();
+            qrInterval = setInterval(generateAndDisplayDynamicQR, QR_LIFESPAN_MS);
+        };
+
+        window.closeModal = () => {
+            clearInterval(qrInterval);
+            document.getElementById('modal').classList.add('hidden');
+            document.body.classList.remove('modal-active');
+        };
+
+        function openModal() {
+            document.getElementById('modal').classList.remove('hidden');
+            document.body.classList.add('modal-active');
+        }
+
+        window.createMeeting = async () => {
+            const meetingNameInput = document.getElementById('meeting-name');
+            const name = meetingNameInput.value.trim();
+            if (!name) return;
+            try {
+                const meetingsCol = collection(db, `meetings`);
+                await addDoc(meetingsCol, { name, createdAt: serverTimestamp(), createdBy: userId });
+                meetingNameInput.value = '';
+            } catch (error) { console.error("Error creating meeting: ", error); }
+        };
+        function listenForMeetings() {
+            const meetingsList = document.getElementById('meetings-list');
+            if (!meetingsList) return;
+            onSnapshot(query(collection(db, `meetings`)), (snapshot) => {
+                const meetingsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                meetingsData.sort((a, b) => b.createdAt?.toMillis() - a.createdAt?.toMillis());
+                meetingsList.innerHTML = meetingsData.map(m => `
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center p-4 border rounded-lg">
+                        <div><p class="font-semibold">${m.name}</p><p class="text-sm text-gray-500">${m.createdAt ? new Date(m.createdAt.toDate()).toLocaleString('es-ES') : ''}</p></div>
+                        <div class="flex gap-2 mt-2 md:mt-0">
+                            <button onclick="showQrCode('${m.id}', '${m.name}')" class="bg-gray-200 text-sm font-bold py-2 px-4 rounded-lg hover:bg-gray-300">Mostrar QR</button>
+                            <button onclick="viewAttendance('${m.id}', '${m.name}')" class="bg-blue-500 text-white text-sm font-bold py-2 px-4 rounded-lg hover:bg-blue-600">Ver Asistentes</button>
+                        </div>
+                    </div>`).join('');
+            });
+        }
+        function listenForTeachers() {
+            const select = document.getElementById('teacher-select');
+            if(!select) return;
+            onSnapshot(query(collection(db, `teachers`)), (snapshot) => {
+                const teachers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                teachers.sort((a, b) => a.name.localeCompare(b.name));
+                select.innerHTML = '<option value="">Selecciona un profesor</option>' + teachers.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+            });
+        }
+        window.getTeacherAttendance = async () => {
+            const teacherId = document.getElementById('teacher-select').value;
+            const startDate = document.getElementById('start-date').value;
+            const endDate = document.getElementById('end-date').value;
+            const resultsDiv = document.getElementById('teacher-attendance-results');
+            if (!teacherId) { resultsDiv.innerHTML = '<p class="text-red-500">Selecciona un profesor.</p>'; return; }
+            resultsDiv.innerHTML = '<p>Buscando...</p>';
+            let q = query(collection(db, `teachers/${teacherId}/attendedMeetings`));
+            if (startDate) q = query(q, where("meetingDate", ">=", Timestamp.fromDate(new Date(startDate))));
+            if (endDate) {
+                const endOfDay = new Date(endDate);
+                endOfDay.setHours(23, 59, 59, 999);
+                q = query(q, where("meetingDate", "<=", Timestamp.fromDate(endOfDay)));
+            }
+            const snapshot = await getDocs(q);
+            if(snapshot.empty) { resultsDiv.innerHTML = '<p class="text-gray-500">No hay registros para este profesor en las fechas seleccionadas.</p>'; return; }
+            const data = snapshot.docs.map(doc => doc.data());
+            data.sort((a, b) => b.meetingDate.toMillis() - a.meetingDate.toMillis());
+            const name = document.getElementById('teacher-select').options[document.getElementById('teacher-select').selectedIndex].text;
+            resultsDiv.innerHTML = `<p class="mb-4">Total para <strong>${name}</strong>: <strong>${data.length}</strong></p>
+                <ul class="space-y-2 max-h-80 overflow-y-auto">${data.map(item => `<li class="flex justify-between p-2 bg-gray-50 rounded-md"><span>${item.meetingName}</span><span class="text-sm text-gray-500">${new Date(item.meetingDate.toDate()).toLocaleString('es-ES')}</span></li>`).join('')}</ul>
+                <button onclick="exportTeacherAttendanceToCSV('${name.replace(/ /g,'_')}', '${btoa(JSON.stringify(data))}')" class="mt-4 bg-green-500 text-white font-bold py-2 px-4 rounded-lg w-full">Exportar</button>`;
+        };
+        window.exportTeacherAttendanceToCSV = (filename, base64Data) => {
+            const data = JSON.parse(atob(base64Data));
+            let csvContent = "data:text/csv;charset=utf-8,Reunion,Fecha\n";
+            data.forEach(item => {
+                csvContent += `"${item.meetingName}","${new Date(item.meetingDate.seconds * 1000).toLocaleString('es-ES')}"\n`;
+            });
+            const link = document.createElement("a");
+            link.setAttribute("href", encodeURI(csvContent));
+            link.setAttribute("download", `asistencia_${filename}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        };
+        window.viewAttendance = (meetingId, meetingName) => {
+             document.getElementById('modal-title').textContent = `Asistencia para: ${meetingName}`;
+            document.getElementById('modal-body').innerHTML = `<div id="attendance-list-container"><p>Cargando...</p></div>`;
+            openModal();
+
+            const attendeesQuery = query(collection(db, `meetings/${meetingId}/attendees`));
+            onSnapshot(attendeesQuery, (snapshot) => {
+                const container = document.getElementById('attendance-list-container');
+                if (!container) return;
+                if (snapshot.empty) {
+                    container.innerHTML = '<p class="text-gray-500">Nadie ha registrado su asistencia todavía.</p>';
+                    return;
+                }
+                const attendeesData = snapshot.docs.map(doc => doc.data());
+                attendeesData.sort((a, b) => a.timestamp?.toMillis() - b.timestamp?.toMillis());
+                container.innerHTML = `
+                    <p class="mb-4">Total: <strong>${attendeesData.length}</strong></p>
+                    <ul class="space-y-2 max-h-80 overflow-y-auto">${attendeesData.map(attendee => `
+                        <li class="flex justify-between p-2 bg-gray-50 rounded-md">
+                            <span>${attendee.name}</span>
+                            <span class="text-sm text-gray-500">${attendee.timestamp ? new Date(attendee.timestamp.toMillis()).toLocaleTimeString('es-ES') : ''}</span>
+                        </li>`).join('')}
+                    </ul>`;
+            });
+        };
+    </script>
+</body>
+</html>
