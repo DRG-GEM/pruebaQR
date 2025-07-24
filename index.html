@@ -272,7 +272,7 @@
             } catch (error) { console.error("Error al registrar: ", error); }
         };
 
-        const QR_LIFESPAN_MS = 15000; // <-- AUMENTADO A 15 SEGUNDOS
+        const QR_LIFESPAN_MS = 30000; // <-- AUMENTADO A 30 SEGUNDOS
         window.showQrCode = (meetingId, meetingName) => {
             document.getElementById('modal-title').textContent = `QR para: ${meetingName}`;
             const modalBody = document.getElementById('modal-body');
