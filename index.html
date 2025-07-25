@@ -337,6 +337,9 @@
             document.getElementById('modal-title').textContent = `QR para: ${meetingName}`;
             const modalBody = document.getElementById('modal-body');
             modalBody.innerHTML = `
+                <!-- INSERTA AQUÍ LA URL DE TU LOGO -->
+                <img src="https://web.virgendelpasico.net/wp-content/uploads/2024/01/cropped-ncoop-scaled-1-300x253.jpg" alt="Logo del Colegio" class="mx-auto h-12 mb-4">
+
                 <p class="text-center text-gray-600 mb-4">Escanea este código. Se actualiza automáticamente cada ${QR_LIFESPAN_MS / 1000} segundos.</p>
                 <div id="qrcode-container" class="flex justify-center p-4 bg-white border rounded-lg relative">
                     <div id="qrcode"></div>
