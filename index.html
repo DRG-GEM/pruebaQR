@@ -24,6 +24,11 @@
             background-color: #4f46e5;
             width: 100%;
         }
+        /* Estilo para el select múltiple */
+        #teacher-select option:checked {
+            background-color: #4f46e5;
+            color: white;
+        }
     </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
@@ -34,8 +39,8 @@
              <div class="lds-dual-ring"></div>
         </div>
 
-        <!-- Vista de Selección de Rol -->
-        <div id="role-selection-view">
+        <!-- Vista de Selección de Rol (oculta por defecto) -->
+        <div id="role-selection-view" class="hidden">
             <div class="bg-white p-8 rounded-2xl shadow-lg text-center">
                 <h1 class="text-3xl font-bold text-indigo-600 mb-4">Control de Asistencia</h1>
                 <p class="text-gray-600 mb-8">Selecciona tu rol para continuar.</p>
@@ -76,7 +81,7 @@
                 <div class="border-b border-gray-200">
                     <nav class="-mb-px flex space-x-8" aria-label="Tabs">
                         <button onclick="showTab('individual-report')" id="tab-individual-report" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-indigo-500 text-indigo-600">
-                            Informe Individual
+                            Informe por Profesor(es)
                         </button>
                         <button onclick="showTab('general-report')" id="tab-general-report" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">
                             Informe General
@@ -86,11 +91,15 @@
 
                 <!-- Contenido de Pestañas -->
                 <div id="individual-report-content" class="mt-6">
-                    <h3 class="text-lg font-medium text-gray-800 mb-4">Consulta por Profesor</h3>
+                    <h3 class="text-lg font-medium text-gray-800 mb-4">Consulta por Profesor(es)</h3>
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
                         <div class="md:col-span-1">
-                            <label for="teacher-select" class="block text-sm font-medium text-gray-700">Profesor</label>
-                            <select id="teacher-select" class="mt-1 block w-full p-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"></select>
+                            <label for="teacher-select" class="block text-sm font-medium text-gray-700">Profesor(es)</label>
+                            <select id="teacher-select" multiple class="mt-1 block w-full p-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 h-32"></select>
+                            <div class="flex justify-between mt-1">
+                                <span class="text-xs text-gray-500">Mantén Ctrl/Cmd para seleccionar varios.</span>
+                                <button onclick="selectAllTeachers(true)" class="text-xs text-indigo-600 hover:underline">Seleccionar todos</button>
+                            </div>
                         </div>
                         <div class="md:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-4">
                              <div>
@@ -172,6 +181,7 @@
 
         let app, auth, db, userId;
         let qrInterval;
+        let generalReportDataForExport = null; // Variable para el export CSV
         
         document.addEventListener('DOMContentLoaded', () => {
              if (!firebaseConfig.apiKey || firebaseConfig.apiKey === "TU_API_KEY") {
@@ -236,7 +246,7 @@
         async function validateTokenAndShowTeacherView(meetingId, tokenId) {
             showView('teacher-view');
             const statusDiv = document.getElementById('teacher-status-message');
-            statusDiv.innerHTML = '<p>Validando código QR...</p>';
+            statusDiv.innerHTML = '<div class="lds-dual-ring" style="border-color: #4f46e5 transparent #4f46e5 transparent;"></div><p class="mt-4">Validando código QR...</p>';
 
             const tokenRef = doc(db, `meetings/${meetingId}/validTokens/${tokenId}`);
             const tokenSnap = await getDoc(tokenRef);
@@ -405,45 +415,93 @@
             onSnapshot(query(collection(db, `teachers`)), (snapshot) => {
                 const teachers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 teachers.sort((a, b) => a.name.localeCompare(b.name));
-                select.innerHTML = '<option value="">Selecciona un profesor</option>' + teachers.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+                select.innerHTML = teachers.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
             });
         }
+        
+        window.selectAllTeachers = (select) => {
+            const teacherSelect = document.getElementById('teacher-select');
+            for(let i = 0; i < teacherSelect.options.length; i++) {
+                teacherSelect.options[i].selected = select;
+            }
+        }
+
         window.getTeacherAttendance = async () => {
-            const teacherId = document.getElementById('teacher-select').value;
+            const teacherSelect = document.getElementById('teacher-select');
+            const selectedTeacherIds = Array.from(teacherSelect.selectedOptions).map(opt => opt.value);
             const startDate = document.getElementById('start-date').value;
             const endDate = document.getElementById('end-date').value;
             const resultsDiv = document.getElementById('teacher-attendance-results');
-            if (!teacherId) { resultsDiv.innerHTML = '<p class="text-red-500">Selecciona un profesor.</p>'; return; }
-            resultsDiv.innerHTML = '<p>Buscando...</p>';
-            let q = query(collection(db, `teachers/${teacherId}/attendedMeetings`));
-            if (startDate) q = query(q, where("meetingDate", ">=", Timestamp.fromDate(new Date(startDate))));
-            if (endDate) {
-                const endOfDay = new Date(endDate);
-                endOfDay.setHours(23, 59, 59, 999);
-                q = query(q, where("meetingDate", "<=", Timestamp.fromDate(endOfDay)));
+            
+            if (selectedTeacherIds.length === 0) {
+                 resultsDiv.innerHTML = '<p class="text-red-500">Por favor, selecciona al menos un profesor.</p>';
+                 return;
             }
-            const snapshot = await getDocs(q);
-            if(snapshot.empty) { resultsDiv.innerHTML = '<p class="text-gray-500">No hay registros para este profesor en las fechas seleccionadas.</p>'; return; }
-            const data = snapshot.docs.map(doc => doc.data());
-            data.sort((a, b) => b.meetingDate.toMillis() - a.meetingDate.toMillis());
-            const name = document.getElementById('teacher-select').options[document.getElementById('teacher-select').selectedIndex].text;
-            resultsDiv.innerHTML = `<p class="mb-4">Total para <strong>${name}</strong>: <strong>${data.length}</strong></p>
-                <ul class="space-y-2 max-h-80 overflow-y-auto">${data.map(item => `<li class="flex justify-between p-2 bg-gray-50 rounded-md"><span>${item.meetingName}</span><span class="text-sm text-gray-500">${new Date(item.meetingDate.toDate()).toLocaleString('es-ES')}</span></li>`).join('')}</ul>
-                <button onclick="exportTeacherAttendanceToCSV('${name.replace(/ /g,'_')}', '${btoa(JSON.stringify(data))}')" class="mt-4 bg-green-500 text-white font-bold py-2 px-4 rounded-lg w-full">Exportar</button>`;
+
+            resultsDiv.innerHTML = '<p>Buscando...</p>';
+            let finalHtml = '';
+            let allAttendanceData = [];
+
+            for (const teacherId of selectedTeacherIds) {
+                const teacherName = teacherSelect.querySelector(`option[value="${teacherId}"]`).text;
+                let q = query(collection(db, `teachers/${teacherId}/attendedMeetings`));
+                if (startDate) q = query(q, where("meetingDate", ">=", Timestamp.fromDate(new Date(startDate))));
+                if (endDate) {
+                    const endOfDay = new Date(endDate);
+                    endOfDay.setHours(23, 59, 59, 999);
+                    q = query(q, where("meetingDate", "<=", Timestamp.fromDate(endOfDay)));
+                }
+                const snapshot = await getDocs(q);
+                const data = snapshot.docs.map(doc => ({...doc.data(), teacherName: teacherName }));
+                allAttendanceData.push(...data);
+            }
+            
+            if (allAttendanceData.length === 0) {
+                 resultsDiv.innerHTML = '<p class="text-gray-500">No hay registros para los profesores seleccionados en estas fechas.</p>';
+                 return;
+            }
+            
+            // Agrupar por profesor
+            const groupedData = allAttendanceData.reduce((acc, item) => {
+                (acc[item.teacherName] = acc[item.teacherName] || []).push(item);
+                return acc;
+            }, {});
+
+            finalHtml += `<p class="mb-4 text-lg">Resultados encontrados: ${allAttendanceData.length}</p>`;
+
+            for(const teacherName in groupedData) {
+                const items = groupedData[teacherName];
+                items.sort((a, b) => b.meetingDate.toMillis() - a.meetingDate.toMillis());
+                finalHtml += `<div class="mb-6"><h4 class="font-bold text-lg mb-2">${teacherName} (${items.length} asistencias)</h4>
+                    <ul class="space-y-2 max-h-60 overflow-y-auto border p-2 rounded-md">${items.map(item => `<li class="flex justify-between p-2 bg-gray-50 rounded-md"><span>${item.meetingName}</span><span class="text-sm text-gray-500">${new Date(item.meetingDate.toDate()).toLocaleString('es-ES')}</span></li>`).join('')}</ul></div>`;
+            }
+
+            finalHtml += `<button onclick="exportTeacherAttendanceToCSV()" class="mt-4 bg-green-500 text-white font-bold py-2 px-4 rounded-lg w-full">Exportar Selección a CSV</button>`;
+            
+            resultsDiv.innerHTML = finalHtml;
+
+            // Guardar datos para exportar
+            window.teacherReportDataForExport = allAttendanceData;
         };
-        window.exportTeacherAttendanceToCSV = (filename, base64Data) => {
-            const data = JSON.parse(atob(base64Data));
-            let csvContent = "data:text/csv;charset=utf-8,Reunion,Fecha\n";
+
+        window.exportTeacherAttendanceToCSV = () => {
+            const data = window.teacherReportDataForExport;
+            if(!data || data.length === 0) return;
+
+            data.sort((a,b) => a.teacherName.localeCompare(b.teacherName) || b.meetingDate.toMillis() - a.meetingDate.toMillis());
+            
+            let csvContent = "data:text/csv;charset=utf-8,Profesor,Reunion,Fecha\n";
             data.forEach(item => {
-                csvContent += `"${item.meetingName}","${new Date(item.meetingDate.seconds * 1000).toLocaleString('es-ES')}"\n`;
+                csvContent += `"${item.teacherName}","${item.meetingName}","${new Date(item.meetingDate.seconds * 1000).toLocaleString('es-ES')}"\n`;
             });
             const link = document.createElement("a");
             link.setAttribute("href", encodeURI(csvContent));
-            link.setAttribute("download", `asistencia_${filename}.csv`);
+            link.setAttribute("download", `asistencia_individual.csv`);
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
         };
+
         window.viewAttendance = (meetingId, meetingName) => {
              document.getElementById('modal-title').textContent = `Asistencia para: ${meetingName}`;
             document.getElementById('modal-body').innerHTML = `<div id="attendance-list-container"><p>Cargando...</p></div>`;
@@ -510,13 +568,21 @@
                 summaryHtml += `<li class="flex justify-between p-2 bg-gray-50 rounded-md"><span>${teacherData.name}</span><span class="font-bold">${attendedCount} / ${meetings.length}</span></li>`;
             });
             summaryHtml += '</ul>';
-            summaryHtml += `<button onclick="exportGeneralAttendanceToCSV(btoa(JSON.stringify({report: fullReportData, meetings: meetings.map(m => ({...m, date: m.date.toISOString()})) })))" class="mt-6 w-full bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700">Exportar Informe Detallado a CSV</button>`;
+            
+            // Guardar datos para exportar en variable global
+            generalReportDataForExport = {report: fullReportData, meetings: meetings.map(m => ({...m, date: m.date.toISOString()})) };
+
+            summaryHtml += `<button onclick="exportGeneralAttendanceToCSV()" class="mt-6 w-full bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700">Exportar Informe Detallado a CSV</button>`;
 
             resultsDiv.innerHTML = summaryHtml;
         };
         
-        window.exportGeneralAttendanceToCSV = (base64Data) => {
-            const { report, meetings } = JSON.parse(atob(base64Data));
+        window.exportGeneralAttendanceToCSV = () => {
+            if (!generalReportDataForExport) {
+                console.error("No hay datos para exportar.");
+                return;
+            }
+            const { report, meetings } = generalReportDataForExport;
             
             // Header
             let csvContent = "Profesor,";
