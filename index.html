@@ -23,7 +23,6 @@
             height: 4px;
             background-color: #4f46e5;
             width: 100%;
-            transition: width 1s linear;
         }
     </style>
 </head>
@@ -53,6 +52,8 @@
                 <h1 class="text-2xl font-bold text-indigo-600">Panel de Administrador</h1>
                  <button onclick="showView('role-selection-view')" class="text-indigo-600 hover:underline">&larr; Volver</button>
             </div>
+            
+            <!-- Crear Sesión -->
             <div class="bg-white p-6 rounded-2xl shadow-lg">
                 <h2 class="text-xl font-semibold mb-4">Crear Nueva Sesión de Asistencia</h2>
                 <div class="flex gap-4">
@@ -60,30 +61,67 @@
                     <button onclick="createMeeting()" class="bg-indigo-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-indigo-700 transition-colors">Crear</button>
                 </div>
             </div>
+            
+            <!-- Sesiones Creadas -->
             <div class="bg-white p-6 rounded-2xl shadow-lg mt-6">
                 <h2 class="text-xl font-semibold mb-4">Sesiones Creadas</h2>
                 <div id="meetings-list" class="space-y-4"></div>
             </div>
-            <div id="teacher-lookup-view" class="bg-white p-6 rounded-2xl shadow-lg mt-6">
-                <h2 class="text-xl font-semibold mb-4">Consulta por Profesor</h2>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-                    <div class="md:col-span-1">
-                        <label for="teacher-select" class="block text-sm font-medium text-gray-700">Profesor</label>
-                        <select id="teacher-select" class="mt-1 block w-full p-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"></select>
-                    </div>
-                    <div class="md:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-4">
-                         <div>
-                            <label for="start-date" class="block text-sm font-medium text-gray-700">Desde</label>
-                            <input type="date" id="start-date" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm">
-                         </div>
-                         <div>
-                            <label for="end-date" class="block text-sm font-medium text-gray-700">Hasta</label>
-                            <input type="date" id="end-date" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm">
-                         </div>
-                         <button onclick="getTeacherAttendance()" class="bg-blue-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-600 self-end">Consultar</button>
-                    </div>
+
+            <!-- Informes -->
+            <div class="bg-white p-6 rounded-2xl shadow-lg mt-6">
+                <h2 class="text-xl font-semibold mb-4">Informes de Asistencia</h2>
+                
+                <!-- Pestañas -->
+                <div class="border-b border-gray-200">
+                    <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+                        <button onclick="showTab('individual-report')" id="tab-individual-report" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-indigo-500 text-indigo-600">
+                            Informe Individual
+                        </button>
+                        <button onclick="showTab('general-report')" id="tab-general-report" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">
+                            Informe General
+                        </button>
+                    </nav>
                 </div>
-                <div id="teacher-attendance-results" class="mt-6"></div>
+
+                <!-- Contenido de Pestañas -->
+                <div id="individual-report-content" class="mt-6">
+                    <h3 class="text-lg font-medium text-gray-800 mb-4">Consulta por Profesor</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                        <div class="md:col-span-1">
+                            <label for="teacher-select" class="block text-sm font-medium text-gray-700">Profesor</label>
+                            <select id="teacher-select" class="mt-1 block w-full p-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"></select>
+                        </div>
+                        <div class="md:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-4">
+                             <div>
+                                <label for="start-date" class="block text-sm font-medium text-gray-700">Desde</label>
+                                <input type="date" id="start-date" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm">
+                             </div>
+                             <div>
+                                <label for="end-date" class="block text-sm font-medium text-gray-700">Hasta</label>
+                                <input type="date" id="end-date" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm">
+                             </div>
+                             <button onclick="getTeacherAttendance()" class="bg-blue-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-600 self-end">Consultar</button>
+                        </div>
+                    </div>
+                    <div id="teacher-attendance-results" class="mt-6"></div>
+                </div>
+
+                <div id="general-report-content" class="hidden mt-6">
+                    <h3 class="text-lg font-medium text-gray-800 mb-4">Resumen General por Fechas</h3>
+                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                         <div>
+                            <label for="general-start-date" class="block text-sm font-medium text-gray-700">Desde</label>
+                            <input type="date" id="general-start-date" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm">
+                         </div>
+                         <div>
+                            <label for="general-end-date" class="block text-sm font-medium text-gray-700">Hasta</label>
+                            <input type="date" id="general-end-date" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm">
+                         </div>
+                         <button onclick="getGeneralAttendance()" class="bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700 self-end">Generar Informe</button>
+                    </div>
+                    <div id="general-attendance-results" class="mt-6"></div>
+                </div>
             </div>
         </div>
 
@@ -183,6 +221,18 @@
             document.getElementById(viewId).classList.remove('hidden');
         };
 
+        window.showTab = (tabId) => {
+            const tabs = ['individual-report', 'general-report'];
+            tabs.forEach(id => {
+                document.getElementById(`${id}-content`).classList.add('hidden');
+                document.getElementById(`tab-${id}`).classList.remove('border-indigo-500', 'text-indigo-600');
+                document.getElementById(`tab-${id}`).classList.add('border-transparent', 'text-gray-500', 'hover:text-gray-700', 'hover:border-gray-300');
+            });
+            document.getElementById(`${tabId}-content`).classList.remove('hidden');
+            document.getElementById(`tab-${tabId}`).classList.add('border-indigo-500', 'text-indigo-600');
+            document.getElementById(`tab-${tabId}`).classList.remove('border-transparent', 'text-gray-500', 'hover:text-gray-700', 'hover:border-gray-300');
+        }
+
         async function validateTokenAndShowTeacherView(meetingId, tokenId) {
             showView('teacher-view');
             const statusDiv = document.getElementById('teacher-status-message');
@@ -272,7 +322,7 @@
             } catch (error) { console.error("Error al registrar: ", error); }
         };
 
-        const QR_LIFESPAN_MS = 30000; // <-- AUMENTADO A 30 SEGUNDOS
+        const QR_LIFESPAN_MS = 30000;
         window.showQrCode = (meetingId, meetingName) => {
             document.getElementById('modal-title').textContent = `QR para: ${meetingName}`;
             const modalBody = document.getElementById('modal-body');
@@ -419,6 +469,85 @@
                     </ul>`;
             });
         };
+        
+        // --- NUEVAS FUNCIONES PARA INFORME GENERAL ---
+        window.getGeneralAttendance = async () => {
+            const startDate = document.getElementById('general-start-date').value;
+            const endDate = document.getElementById('general-end-date').value;
+            const resultsDiv = document.getElementById('general-attendance-results');
+            resultsDiv.innerHTML = '<p>Generando informe, esto puede tardar unos segundos...</p>';
+
+            // 1. Obtener todos los profesores
+            const teachersSnap = await getDocs(collection(db, 'teachers'));
+            const teachers = teachersSnap.docs.map(doc => ({ id: doc.id, name: doc.data().name }));
+            teachers.sort((a, b) => a.name.localeCompare(b.name));
+
+            // 2. Obtener todas las reuniones en el rango de fechas
+            let meetingsQuery = query(collection(db, 'meetings'));
+            if (startDate) meetingsQuery = query(meetingsQuery, where("createdAt", ">=", Timestamp.fromDate(new Date(startDate))));
+            if (endDate) {
+                 const endOfDay = new Date(endDate);
+                 endOfDay.setHours(23, 59, 59, 999);
+                 meetingsQuery = query(meetingsQuery, where("createdAt", "<=", Timestamp.fromDate(endOfDay)));
+            }
+            const meetingsSnap = await getDocs(meetingsQuery);
+            const meetings = meetingsSnap.docs.map(doc => ({ id: doc.id, name: doc.data().name, date: doc.data().createdAt.toDate() }));
+            meetings.sort((a, b) => a.date - b.date);
+
+            // 3. Obtener la asistencia para cada profesor
+            const attendancePromises = teachers.map(async (teacher) => {
+                const attendedMeetingsSnap = await getDocs(collection(db, `teachers/${teacher.id}/attendedMeetings`));
+                const attendedMeetingIds = new Set(attendedMeetingsSnap.docs.map(doc => doc.id));
+                return { ...teacher, attendedMeetingIds };
+            });
+
+            const fullReportData = await Promise.all(attendancePromises);
+
+            // 4. Renderizar el resumen y preparar para exportar
+            let summaryHtml = '<ul class="space-y-2">';
+            fullReportData.forEach(teacherData => {
+                const attendedCount = [...teacherData.attendedMeetingIds].filter(id => meetings.some(m => m.id === id)).length;
+                summaryHtml += `<li class="flex justify-between p-2 bg-gray-50 rounded-md"><span>${teacherData.name}</span><span class="font-bold">${attendedCount} / ${meetings.length}</span></li>`;
+            });
+            summaryHtml += '</ul>';
+            summaryHtml += `<button onclick="exportGeneralAttendanceToCSV(btoa(JSON.stringify({report: fullReportData, meetings: meetings.map(m => ({...m, date: m.date.toISOString()})) })))" class="mt-6 w-full bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700">Exportar Informe Detallado a CSV</button>`;
+
+            resultsDiv.innerHTML = summaryHtml;
+        };
+        
+        window.exportGeneralAttendanceToCSV = (base64Data) => {
+            const { report, meetings } = JSON.parse(atob(base64Data));
+            
+            // Header
+            let csvContent = "Profesor,";
+            meetings.forEach(meeting => {
+                csvContent += `"${meeting.name} (${new Date(meeting.date).toLocaleDateString('es-ES')})",`;
+            });
+            csvContent += "Total\n";
+
+            // Rows
+            report.forEach(teacherData => {
+                csvContent += `"${teacherData.name}",`;
+                let total = 0;
+                meetings.forEach(meeting => {
+                    if (teacherData.attendedMeetingIds.has(meeting.id)) {
+                        csvContent += "X,";
+                        total++;
+                    } else {
+                        csvContent += ",";
+                    }
+                });
+                csvContent += `${total}\n`;
+            });
+
+            const link = document.createElement("a");
+            link.setAttribute("href", 'data:text/csv;charset=utf-8,' + encodeURIComponent(csvContent));
+            link.setAttribute("download", `informe_general_asistencia.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        };
+
     </script>
 </body>
 </html>
