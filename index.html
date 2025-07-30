@@ -29,6 +29,10 @@
             background-color: #4f46e5;
             color: white;
         }
+        button:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
     </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
@@ -167,7 +171,6 @@
 
         // *******************************************************************
         // PEGA AQUÍ TU CONFIGURACIÓN DE FIREBASE
-        // Reemplaza este objeto de ejemplo con el que copiaste de tu consola de Firebase
         const firebaseConfig = {
   apiKey: "AIzaSyCu7P0nV5vSeqvwLtfUpHIpnAgGu9Dx3mY",
   authDomain: "control-asistencia-pruebas.firebaseapp.com",
@@ -181,7 +184,7 @@
 
         let app, auth, db, userId;
         let qrInterval;
-        let generalReportDataForExport = null; // Variable para el export CSV
+        let generalReportDataForExport = null;
         
         document.addEventListener('DOMContentLoaded', () => {
              if (!firebaseConfig.apiKey || firebaseConfig.apiKey === "TU_API_KEY") {
@@ -262,7 +265,7 @@
                         <p class="text-xl font-semibold mb-4 text-gray-700">Asistencia para: "${meetingName}"</p>
                         <p class="text-2xl text-gray-800 mb-2">¿Eres <strong class="font-bold">${savedName}</strong>?</p>
                         <p class="text-gray-500 mb-6">Confirma para registrar tu asistencia.</p>
-                        <button onclick="recordAttendance('${meetingId}', true)" class="w-full max-w-md mx-auto bg-green-500 text-white font-bold py-3 px-6 rounded-lg hover:bg-green-600 transition-colors text-lg">Sí, confirmar asistencia</button>
+                        <button id="confirm-btn" onclick="recordAttendance('${meetingId}', true, this)" class="w-full max-w-md mx-auto bg-green-500 text-white font-bold py-3 px-6 rounded-lg hover:bg-green-600 transition-colors text-lg">Sí, confirmar asistencia</button>
                         <button onclick="showChangeTeacherForm('${meetingId}', '${meetingName}')" class="mt-4 text-sm text-indigo-600 hover:underline">No soy yo / Cambiar nombre</button>
                     `;
                 } else {
@@ -278,13 +281,17 @@
                 <p class="text-xl font-semibold mb-4 text-gray-700">Asistencia para: "${meetingName}"</p>
                 <p class="text-gray-600 mb-6">Introduce tu nombre completo para firmar. Solo tendrás que hacerlo una vez.</p>
                 <input type="text" id="teacher-name-input" placeholder="Nombre y Apellidos" class="w-full max-w-md mx-auto p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none mb-6">
-                <button onclick="recordAttendance('${meetingId}', false)" class="w-full max-w-md mx-auto bg-green-500 text-white font-bold py-3 px-6 rounded-lg hover:bg-green-600 transition-colors text-lg">Confirmar Asistencia</button>
+                <button id="confirm-new-btn" onclick="recordAttendance('${meetingId}', false, this)" class="w-full max-w-md mx-auto bg-green-500 text-white font-bold py-3 px-6 rounded-lg hover:bg-green-600 transition-colors text-lg">Confirmar Asistencia</button>
             `;
             document.getElementById('teacher-name-input').value = localStorage.getItem('teacherName') || '';
             document.getElementById('teacher-name-input').focus();
         }
 
-        window.recordAttendance = async (meetingId, isRecognized) => {
+        window.recordAttendance = async (meetingId, isRecognized, buttonEl) => {
+            const originalButtonText = buttonEl.innerHTML;
+            buttonEl.disabled = true;
+            buttonEl.innerHTML = `<span class="animate-pulse">Registrando...</span>`;
+
             let name;
             if (isRecognized) {
                 name = localStorage.getItem('teacherName');
@@ -294,6 +301,8 @@
                 if (!name) {
                     nameInput.classList.add('border-red-500');
                     setTimeout(() => nameInput.classList.remove('border-red-500'), 2000);
+                    buttonEl.disabled = false;
+                    buttonEl.innerHTML = originalButtonText;
                     return;
                 }
             }
@@ -313,7 +322,11 @@
 
             const meetingRef = doc(db, `meetings/${meetingId}`);
             const meetingSnap = await getDoc(meetingRef);
-            if (!meetingSnap.exists()) return;
+            if (!meetingSnap.exists()) {
+                 buttonEl.disabled = false;
+                 buttonEl.innerHTML = originalButtonText;
+                 return;
+            }
             const meetingData = meetingSnap.data();
 
             try {
@@ -329,7 +342,11 @@
                     </svg>
                     <h2 class="text-2xl font-bold mt-4">¡Asistencia Registrada!</h2>
                     <p class="text-gray-600 mt-2">Gracias. Tu asistencia para "${meetingData.name}" ha sido confirmada.</p>`;
-            } catch (error) { console.error("Error al registrar: ", error); }
+            } catch (error) { 
+                console.error("Error al registrar: ", error); 
+                buttonEl.disabled = false;
+                buttonEl.innerHTML = originalButtonText;
+            }
         };
 
         const QR_LIFESPAN_MS = 30000;
@@ -337,9 +354,7 @@
             document.getElementById('modal-title').textContent = `QR para: ${meetingName}`;
             const modalBody = document.getElementById('modal-body');
             modalBody.innerHTML = `
-                <!-- INSERTA AQUÍ LA URL DE TU LOGO -->
-                <img src="https://web.virgendelpasico.net/wp-content/uploads/2024/01/cropped-ncoop-scaled-1-300x253.jpg" alt="Logo del Colegio" class="mx-auto h-12 mb-4">
-
+                <img src="https://placehold.co/150x50/ffffff/4f46e5?text=Tu+Logo+Aquí" alt="Logo del Colegio" class="mx-auto h-12 mb-4" onerror="this.style.display='none'">
                 <p class="text-center text-gray-600 mb-4">Escanea este código. Se actualiza automáticamente cada ${QR_LIFESPAN_MS / 1000} segundos.</p>
                 <div id="qrcode-container" class="flex justify-center p-4 bg-white border rounded-lg relative">
                     <div id="qrcode"></div>
@@ -538,12 +553,10 @@
             const resultsDiv = document.getElementById('general-attendance-results');
             resultsDiv.innerHTML = '<p>Generando informe, esto puede tardar unos segundos...</p>';
 
-            // 1. Obtener todos los profesores
             const teachersSnap = await getDocs(collection(db, 'teachers'));
             const teachers = teachersSnap.docs.map(doc => ({ id: doc.id, name: doc.data().name }));
             teachers.sort((a, b) => a.name.localeCompare(b.name));
 
-            // 2. Obtener todas las reuniones en el rango de fechas
             let meetingsQuery = query(collection(db, 'meetings'));
             if (startDate) meetingsQuery = query(meetingsQuery, where("createdAt", ">=", Timestamp.fromDate(new Date(startDate))));
             if (endDate) {
@@ -555,7 +568,6 @@
             const meetings = meetingsSnap.docs.map(doc => ({ id: doc.id, name: doc.data().name, date: doc.data().createdAt.toDate() }));
             meetings.sort((a, b) => a.date - b.date);
 
-            // 3. Obtener la asistencia para cada profesor
             const attendancePromises = teachers.map(async (teacher) => {
                 const attendedMeetingsSnap = await getDocs(collection(db, `teachers/${teacher.id}/attendedMeetings`));
                 const attendedMeetingIds = new Set(attendedMeetingsSnap.docs.map(doc => doc.id));
@@ -564,7 +576,6 @@
 
             const fullReportData = await Promise.all(attendancePromises);
 
-            // 4. Renderizar el resumen y preparar para exportar
             let summaryHtml = '<ul class="space-y-2">';
             fullReportData.forEach(teacherData => {
                 const attendedCount = [...teacherData.attendedMeetingIds].filter(id => meetings.some(m => m.id === id)).length;
@@ -572,29 +583,27 @@
             });
             summaryHtml += '</ul>';
             
-            // Guardar datos para exportar en variable global
             generalReportDataForExport = {report: fullReportData, meetings: meetings.map(m => ({...m, date: m.date.toISOString()})) };
 
-            summaryHtml += `<button onclick="exportGeneralAttendanceToCSV()" class="mt-6 w-full bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700">Exportar Informe Detallado a CSV</button>`;
+            summaryHtml += `<button id="export-general-btn" class="mt-6 w-full bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700">Exportar Informe Detallado a CSV</button>`;
 
             resultsDiv.innerHTML = summaryHtml;
+            document.getElementById('export-general-btn').addEventListener('click', exportGeneralAttendanceToCSV);
         };
         
-        window.exportGeneralAttendanceToCSV = () => {
+        function exportGeneralAttendanceToCSV() {
             if (!generalReportDataForExport) {
                 console.error("No hay datos para exportar.");
                 return;
             }
             const { report, meetings } = generalReportDataForExport;
             
-            // Header
             let csvContent = "Profesor,";
             meetings.forEach(meeting => {
                 csvContent += `"${meeting.name} (${new Date(meeting.date).toLocaleDateString('es-ES')})",`;
             });
             csvContent += "Total\n";
 
-            // Rows
             report.forEach(teacherData => {
                 csvContent += `"${teacherData.name}",`;
                 let total = 0;
