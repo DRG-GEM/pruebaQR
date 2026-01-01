@@ -10,15 +10,10 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     
     <style>
-        /* ESTILOS CRÍTICOS: Garantizan que la app se vea bien aunque falle Tailwind */
-        body { font-family: 'Inter', sans-serif; }
-        
-        /* Esta regla es vital: asegura que lo que debe estar oculto, se quede oculto */
+        /* ESTILOS CRÍTICOS */
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; } /* Fondo suave */
         .hidden { display: none !important; }
-        
-        /* Asegura que el logo nunca sea gigante */
         .app-logo { max-height: 100px; width: auto; margin: 0 auto 1.5rem auto; }
-        
         .modal { transition: opacity 0.25s ease; }
         body.modal-active { overflow: hidden; }
         
@@ -32,148 +27,156 @@
         }
         @keyframes lds-dual-ring { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         
-        #qr-timer-bar {
-            height: 4px;
-            background-color: #4f46e5;
-            width: 100%;
+        #qr-timer-bar { height: 4px; background-color: #4f46e5; width: 100%; }
+        button:disabled { opacity: 0.7; cursor: not-allowed; }
+
+        /* Estilos para Toasts (Notificaciones) */
+        #toast-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
         }
+        .toast {
+            min-width: 250px;
+            padding: 16px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 500;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            animation: slideIn 0.3s ease-out;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .toast-success { background-color: #10b981; } /* Verde */
+        .toast-error { background-color: #ef4444; }   /* Rojo */
+        .toast-info { background-color: #3b82f6; }    /* Azul */
         
-        button:disabled {
-            opacity: 0.7;
-            cursor: not-allowed;
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
         }
     </style>
 </head>
-<body class="bg-gray-100 text-gray-800">
+<body class="text-gray-800">
 
     <!-- Contenedor Principal -->
-    <div id="app" class="container mx-auto p-4 md:p-8 max-w-4xl">
+    <div id="app" class="container mx-auto p-4 md:p-8 max-w-4xl min-h-screen">
         <div id="loading-screen" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50 p-4">
              <div class="lds-dual-ring"></div>
         </div>
 
-        <!-- Vista de Acceso Dirección (Antes Selección de Rol) -->
-        <div id="role-selection-view" class="hidden">
-            <div class="bg-white p-8 rounded-2xl shadow-lg text-center max-w-lg mx-auto mt-10">
-                <!-- LOGO DEL CENTRO -->
+        <!-- Contenedor de Notificaciones -->
+        <div id="toast-container"></div>
+
+        <!-- Vista de Acceso Dirección (Login Google) -->
+        <div id="role-selection-view" class="hidden h-full flex flex-col justify-center">
+            <div class="bg-white p-10 rounded-3xl shadow-xl text-center max-w-md mx-auto w-full mt-10 transform transition-all hover:scale-105 duration-300">
                 <img src="https://web.virgendelpasico.net/wp-content/uploads/2024/01/cropped-ncoop-scaled-1-300x253.jpg" alt="Logo Virgen del Pasico" class="app-logo">
                 
                 <h1 class="text-3xl font-bold text-gray-800 mb-2">Control de Asistencia</h1>
-                <p class="text-gray-500 mb-8">Acceso exclusivo para el equipo directivo</p>
+                <p class="text-gray-500 mb-8 font-medium">Panel de Dirección</p>
                 
                 <div class="flex flex-col gap-4 justify-center">
-                    <button onclick="loginWithGoogle()" class="w-full bg-white text-gray-700 font-bold py-4 px-6 rounded-xl hover:bg-gray-50 transition-colors shadow-md border border-gray-300 flex items-center justify-center gap-3">
+                    <button onclick="loginWithGoogle()" class="w-full bg-white text-gray-700 font-bold py-4 px-6 rounded-xl hover:bg-gray-50 transition-all shadow-md border border-gray-200 flex items-center justify-center gap-3 hover:shadow-lg">
                         <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-6 h-6" alt="Google logo">
                         Iniciar Sesión con Google
                     </button>
                 </div>
-                <div id="login-error" class="text-red-500 mt-4 text-sm hidden"></div>
-                <p class="mt-8 text-xs text-gray-400">Los profesores deben acceder escaneando el código QR de la reunión.</p>
+                <div id="login-error" class="text-red-500 mt-4 text-sm hidden bg-red-50 p-2 rounded"></div>
+                <p class="mt-8 text-xs text-gray-400 border-t pt-4">Los profesores deben acceder escaneando el código QR de la reunión.</p>
             </div>
         </div>
 
         <!-- Vista del Administrador -->
         <div id="admin-view" class="hidden">
-            <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-                <h1 class="text-2xl font-bold text-indigo-600">Panel de Dirección</h1>
-                <div class="flex flex-wrap items-center gap-2 md:gap-4 justify-center">
-                    <span id="admin-email-display" class="text-sm text-gray-500 hidden lg:inline"></span>
+            <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4 bg-white p-4 rounded-xl shadow-sm">
+                <h1 class="text-2xl font-bold text-indigo-600 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
+                    Panel de Dirección
+                </h1>
+                <div class="flex flex-wrap items-center gap-2 justify-center">
+                    <span id="admin-email-display" class="text-xs font-mono text-gray-500 hidden lg:inline bg-gray-100 px-2 py-1 rounded"></span>
                     
-                    <!-- Botón Reset (NUEVO) -->
-                    <button onclick="resetTestData()" class="flex items-center gap-2 bg-red-50 text-red-700 px-3 py-2 rounded-lg border border-red-200 hover:bg-red-100 text-sm font-semibold transition-colors" title="Borrar toda la base de datos">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                        Resetear Pruebas
+                    <button onclick="resetTestData()" class="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Resetear Pruebas">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                     </button>
 
-                    <!-- Botón Gestión Claustro -->
-                    <button onclick="openTeacherManagement()" class="flex items-center gap-2 bg-indigo-50 text-indigo-700 px-3 py-2 rounded-lg border border-indigo-200 hover:bg-indigo-100 text-sm font-semibold transition-colors">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                        </svg>
-                        Gestionar Claustro
+                    <button onclick="openTeacherManagement()" class="bg-indigo-50 text-indigo-700 px-4 py-2 rounded-lg hover:bg-indigo-100 text-sm font-semibold transition-colors flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                        Claustro
                     </button>
 
-                    <button onclick="logout()" class="text-gray-500 hover:text-red-600 text-sm font-medium flex items-center gap-1 border border-gray-200 px-3 py-2 rounded-lg hover:bg-gray-50">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                          <path fill-rule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 102 0V4a1 1 0 00-1-1zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z" clip-rule="evenodd" />
-                        </svg>
-                        Salir
+                    <button onclick="logout()" class="text-gray-500 hover:text-red-600 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors" title="Salir">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
                     </button>
                 </div>
             </div>
             
             <!-- Crear Sesión -->
-            <div class="bg-white p-6 rounded-2xl shadow-lg border-l-4 border-indigo-500">
-                <h2 class="text-xl font-semibold mb-4 text-gray-800">Nueva Reunión</h2>
+            <div class="bg-white p-6 rounded-2xl shadow-md border-l-4 border-indigo-500 transition-shadow hover:shadow-lg">
+                <h2 class="text-lg font-bold mb-4 text-gray-800">Nueva Reunión</h2>
                 <div class="flex gap-4">
-                    <input type="text" id="meeting-name" placeholder="Nombre de la reunión (Ej: Claustro Final Curso)" class="flex-grow p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none">
-                    <button onclick="createMeeting()" class="bg-indigo-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-indigo-700 transition-colors">Crear</button>
+                    <input type="text" id="meeting-name" placeholder="Nombre de la reunión (Ej: Claustro Final Curso)" class="flex-grow p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all">
+                    <button onclick="createMeeting()" class="bg-indigo-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-indigo-700 transition-colors shadow-md">Crear</button>
                 </div>
             </div>
             
             <!-- Sesiones Creadas -->
-            <div class="bg-white p-6 rounded-2xl shadow-lg mt-6">
-                <h2 class="text-xl font-semibold mb-4 text-gray-800">Reuniones Activas e Histórico</h2>
+            <div class="bg-white p-6 rounded-2xl shadow-md mt-6">
+                <h2 class="text-lg font-bold mb-4 text-gray-800 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    Reuniones Activas e Histórico
+                </h2>
                 <div id="meetings-list" class="space-y-4"></div>
             </div>
 
             <!-- Informes -->
-            <div class="bg-white p-6 rounded-2xl shadow-lg mt-6">
-                <h2 class="text-xl font-semibold mb-4 text-gray-800">Informes de Asistencia</h2>
-                
-                <!-- Pestañas -->
+            <div class="bg-white p-6 rounded-2xl shadow-md mt-6">
+                <h2 class="text-lg font-bold mb-4 text-gray-800 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                    Informes de Asistencia
+                </h2>
                 <div class="border-b border-gray-200">
                     <nav class="-mb-px flex space-x-8" aria-label="Tabs">
-                        <button onclick="showTab('individual-report')" id="tab-individual-report" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-indigo-500 text-indigo-600">
-                            Informe por Profesor(es)
-                        </button>
-                        <button onclick="showTab('general-report')" id="tab-general-report" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">
-                            Informe General
-                        </button>
+                        <button onclick="showTab('individual-report')" id="tab-individual-report" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-indigo-500 text-indigo-600 transition-colors">Informe por Profesor(es)</button>
+                        <button onclick="showTab('general-report')" id="tab-general-report" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 transition-colors">Informe General</button>
                     </nav>
                 </div>
 
-                <!-- Contenido de Pestañas -->
+                <!-- Contenido Informes -->
                 <div id="individual-report-content" class="mt-6">
-                    <h3 class="text-lg font-medium text-gray-800 mb-4">Consulta por Profesor(es)</h3>
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
                         <div class="md:col-span-1">
-                            <label for="teacher-select" class="block text-sm font-medium text-gray-700">Profesor(es)</label>
-                            <select id="teacher-select" multiple class="mt-1 block w-full p-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 h-32"></select>
+                            <label for="teacher-select" class="block text-sm font-medium text-gray-700 mb-1">Profesor(es)</label>
+                            <select id="teacher-select" multiple class="mt-1 block w-full p-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 h-32 text-sm"></select>
                             <div class="flex justify-between mt-1">
-                                <span class="text-xs text-gray-500">Mantén Ctrl/Cmd para seleccionar varios.</span>
-                                <button onclick="selectAllTeachers(true)" class="text-xs text-indigo-600 hover:underline">Seleccionar todos</button>
+                                <span class="text-xs text-gray-400">Ctrl/Cmd + Clic para varios</span>
+                                <button onclick="selectAllTeachers(true)" class="text-xs text-indigo-600 hover:underline font-medium">Seleccionar Todos</button>
                             </div>
                         </div>
                         <div class="md:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-4">
-                             <div>
-                                <label for="start-date" class="block text-sm font-medium text-gray-700">Desde</label>
-                                <input type="date" id="start-date" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm">
-                             </div>
-                             <div>
-                                <label for="end-date" class="block text-sm font-medium text-gray-700">Hasta</label>
-                                <input type="date" id="end-date" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm">
-                             </div>
-                             <button onclick="getTeacherAttendance()" class="bg-blue-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-600 self-end">Consultar</button>
+                             <div><label class="block text-sm font-medium text-gray-700 mb-1">Desde</label><input type="date" id="start-date" class="block w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"></div>
+                             <div><label class="block text-sm font-medium text-gray-700 mb-1">Hasta</label><input type="date" id="end-date" class="block w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"></div>
+                             <button onclick="getTeacherAttendance()" class="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 self-end shadow-md transition-colors">Consultar</button>
                         </div>
                     </div>
                     <div id="teacher-attendance-results" class="mt-6"></div>
                 </div>
 
                 <div id="general-report-content" class="hidden mt-6">
-                    <h3 class="text-lg font-medium text-gray-800 mb-4">Resumen General por Fechas</h3>
                      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-                         <div>
-                            <label for="general-start-date" class="block text-sm font-medium text-gray-700">Desde</label>
-                            <input type="date" id="general-start-date" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm">
-                         </div>
-                         <div>
-                            <label for="general-end-date" class="block text-sm font-medium text-gray-700">Hasta</label>
-                            <input type="date" id="general-end-date" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm">
-                         </div>
-                         <button onclick="getGeneralAttendance()" class="bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700 self-end">Generar Informe</button>
+                         <div><label class="block text-sm font-medium text-gray-700 mb-1">Desde</label><input type="date" id="general-start-date" class="block w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"></div>
+                         <div><label class="block text-sm font-medium text-gray-700 mb-1">Hasta</label><input type="date" id="general-end-date" class="block w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"></div>
+                         <button onclick="getGeneralAttendance()" class="bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700 self-end shadow-md transition-colors">Generar Informe</button>
                     </div>
                     <div id="general-attendance-results" class="mt-6"></div>
                 </div>
@@ -182,28 +185,28 @@
 
         <!-- Vista del Profesor -->
         <div id="teacher-view" class="hidden">
-            <div class="flex justify-between items-center mb-6">
-                <!-- Se ha eliminado el botón de volver para el profesor, ya no es necesario -->
-            </div>
-            <div id="teacher-status-message" class="bg-white p-8 rounded-2xl shadow-lg text-center mt-10"></div>
+            <div id="teacher-status-message" class="bg-white p-8 rounded-2xl shadow-lg text-center mt-10 border-t-4 border-indigo-500"></div>
         </div>
     </div>
 
-    <!-- Modal para QR y Lista de Asistencia -->
-    <div id="modal" class="modal fixed w-full h-full top-0 left-0 flex items-center justify-center hidden">
-        <div class="modal-overlay absolute w-full h-full bg-gray-900 opacity-50" onclick="closeModal()"></div>
-        <div class="modal-container bg-white w-11/12 md:max-w-2xl mx-auto rounded-2xl shadow-lg z-50 overflow-y-auto">
+    <!-- Modal -->
+    <div id="modal" class="modal fixed w-full h-full top-0 left-0 flex items-center justify-center hidden z-50">
+        <div class="modal-overlay absolute w-full h-full bg-gray-900 opacity-60 backdrop-blur-sm" onclick="closeModal()"></div>
+        <div class="modal-container bg-white w-11/12 md:max-w-2xl mx-auto rounded-2xl shadow-2xl z-50 overflow-y-auto transform transition-all scale-100">
             <div class="modal-content py-4 text-left px-6">
-                <div class="flex justify-between items-center pb-3">
-                    <p id="modal-title" class="text-2xl font-bold"></p>
-                    <div class="modal-close cursor-pointer z-50" onclick="closeModal()">
+                <div class="flex justify-between items-center pb-3 border-b mb-4">
+                    <p id="modal-title" class="text-2xl font-bold text-gray-800"></p>
+                    <div class="modal-close cursor-pointer z-50 p-2 hover:bg-gray-100 rounded-full transition-colors" onclick="closeModal()">
                         <svg class="fill-current text-black" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 18 18"><path d="M14.53 4.53l-1.06-1.06L9 7.94 4.53 3.47 3.47 4.53 7.94 9l-4.47 4.47 1.06 1.06L9 10.06l4.47 4.47 1.06-1.06L10.06 9z"></path></svg>
                     </div>
                 </div>
-                <div id="modal-body" class="my-5"></div>
+                <div id="modal-body" class="my-2"></div>
             </div>
         </div>
     </div>
+
+    <!-- Datalist global para el autocompletado de profesores (Admin y Profesor) -->
+    <datalist id="teacher-list-admin"></datalist>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
@@ -224,7 +227,6 @@
         // *******************************************************************
 
         // --- EMAILS AUTORIZADOS ---
-        // Deja vacío [] si quieres permitir a todos, o pon emails: ["tu@email.com"]
         const AUTHORIZED_EMAILS = [
             "donraulvp@gmail.com", 
             "director@colegio.com" 
@@ -233,11 +235,44 @@
         let app, auth, db, userId;
         let qrInterval;
         let generalReportDataForExport = null;
-        let allTeachersList = []; // Para el registro manual
-        let currentMeetingDataForPrint = null; // Para imprimir
+        let allTeachersList = []; 
+        let currentMeetingDataForPrint = null; 
         
+        // Función para mostrar notificaciones (Toasts)
+        window.showToast = (message, type = 'info') => {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            
+            // Iconos según tipo
+            let icon = '';
+            if(type === 'success') icon = '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>';
+            if(type === 'error') icon = '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>';
+            
+            toast.innerHTML = `<div class="flex items-center gap-2">${icon}<span>${message}</span></div>`;
+            container.appendChild(toast);
+
+            // Eliminar después de 3 segundos
+            setTimeout(() => {
+                toast.style.animation = 'fadeOut 0.5s ease-out forwards';
+                setTimeout(() => toast.remove(), 500);
+            }, 3000);
+        };
+
         document.addEventListener('DOMContentLoaded', () => {
-             // Comprobación de seguridad
+             // Establecer fechas por defecto en inputs
+             const today = new Date().toISOString().split('T')[0];
+             const firstDay = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
+             
+             ['start-date', 'general-start-date'].forEach(id => {
+                 const el = document.getElementById(id);
+                 if(el) el.value = firstDay;
+             });
+             ['end-date', 'general-end-date'].forEach(id => {
+                 const el = document.getElementById(id);
+                 if(el) el.value = today;
+             });
+
              if (!firebaseConfig.apiKey || firebaseConfig.apiKey.includes("API_KEY")) {
                 document.getElementById('loading-screen').innerHTML = `<div class="bg-white p-8 rounded-lg shadow-xl text-center"><h2 class="text-2xl font-bold text-red-600">Error de Configuración</h2><p class="mt-4 text-gray-700">La configuración de Firebase no es correcta.</p></div>`;
                 return;
@@ -253,27 +288,22 @@
 
                 if (user) {
                     userId = user.uid;
-                    // Si es un usuario anónimo (profesor) o un usuario de Google (admin)
                     if (user.isAnonymous) {
-                        initializeAppState(); // Flujo profesor/anónimo
+                        initializeAppState(); 
                     } else {
-                        // Flujo Administrador (Google)
-                        // Verificación de email autorizado
                         if (AUTHORIZED_EMAILS.length > 0 && !AUTHORIZED_EMAILS.includes(user.email)) {
                             await signOut(auth);
-                            alert("Acceso denegado: Tu correo (" + user.email + ") no está autorizado para acceder al panel de dirección.");
+                            showToast("Acceso denegado: Email no autorizado.", 'error');
                             showView('role-selection-view');
                             document.getElementById('loading-screen').style.display = 'none';
                             return;
                         }
                         
                         document.getElementById('admin-email-display').textContent = user.email;
-                        initializeAppState(); // Flujo admin autorizado
+                        initializeAppState(); 
                     }
                 } else {
-                    // No logueado
                     if (isTeacherLink) {
-                        // Si es enlace de profesor, logueamos anónimamente automático
                         try {
                             await signInAnonymously(auth);
                         } catch (error) {
@@ -281,7 +311,6 @@
                             document.getElementById('loading-screen').innerHTML = `Error de conexión.`;
                         }
                     } else {
-                        // Si es la home, esperamos a que pulse el botón de Google
                         document.getElementById('loading-screen').style.display = 'none';
                         showView('role-selection-view');
                     }
@@ -289,7 +318,6 @@
             });
         });
         
-        // --- AUTENTICACIÓN ADMIN ---
         window.loginWithGoogle = async () => {
             const provider = new GoogleAuthProvider();
             try {
@@ -299,7 +327,6 @@
                 const errorDiv = document.getElementById('login-error');
                 errorDiv.textContent = "Error al iniciar sesión: " + error.message;
                 errorDiv.classList.remove('hidden');
-                // IMPORTANTE: Avisar si el dominio no está autorizado
                 if (error.code === 'auth/unauthorized-domain') {
                     alert("Este dominio no está autorizado en Firebase. Añádelo en la consola de Firebase > Authentication > Settings.");
                 }
@@ -311,7 +338,6 @@
             window.location.reload();
         };
 
-        // --- FUNCIONALIDAD DE RESET (NUEVO) ---
         window.resetTestData = async () => {
             if(!confirm("⚠️ ¡ATENCIÓN! ⚠️\n\n¿Estás seguro de que quieres BORRAR TODOS LOS DATOS?\n\nSe eliminarán todas las reuniones, profesores y registros de asistencia. Esta acción no se puede deshacer.")) return;
             if(!confirm("Confirmación final: ¿Realmente quieres eliminar toda la base de datos de pruebas?")) return;
@@ -321,38 +347,28 @@
             loading.innerHTML = '<div class="text-white text-center"><div class="lds-dual-ring"></div><p class="mt-4">Borrando datos, por favor espera...</p></div>';
 
             try {
-                // 1. Borrar Reuniones y sus subcolecciones
                 const meetingsSnap = await getDocs(collection(db, 'meetings'));
                 for(const mDoc of meetingsSnap.docs) {
-                    // Borrar asistentes
                     const attendeesSnap = await getDocs(collection(db, `meetings/${mDoc.id}/attendees`));
                     for(const aDoc of attendeesSnap.docs) await deleteDoc(aDoc.ref);
-                    
-                    // Borrar tokens
                     const tokensSnap = await getDocs(collection(db, `meetings/${mDoc.id}/validTokens`));
                     for(const tDoc of tokensSnap.docs) await deleteDoc(tDoc.ref);
-
-                    // Borrar reunión
                     await deleteDoc(mDoc.ref);
                 }
 
-                // 2. Borrar Profesores y sus subcolecciones
                 const teachersSnap = await getDocs(collection(db, 'teachers'));
                 for(const tDoc of teachersSnap.docs) {
-                    // Borrar asistencias del profesor
                     const attSnap = await getDocs(collection(db, `teachers/${tDoc.id}/attendedMeetings`));
                     for(const amDoc of attSnap.docs) await deleteDoc(amDoc.ref);
-
-                    // Borrar profesor
                     await deleteDoc(tDoc.ref);
                 }
 
-                alert("Todos los datos han sido eliminados correctamente.");
-                window.location.reload();
+                showToast("Datos eliminados correctamente.", 'success');
+                setTimeout(() => window.location.reload(), 1500);
 
             } catch (error) {
                 console.error("Error al resetear:", error);
-                alert("Hubo un error al intentar borrar los datos. Revisa la consola.");
+                showToast("Error al borrar los datos.", 'error');
                 loading.style.display = 'none';
             }
         }
@@ -365,20 +381,14 @@
         function setupUIFromURL() {
             const params = new URLSearchParams(window.location.search);
             if (params.has('meeting') && params.has('token')) {
-                // Flujo de profesor (QR escaneado)
                 validateTokenAndShowTeacherView(params.get('meeting'), params.get('token'));
             } else {
-                // Flujo de administración
-                // Si llegamos aquí y estamos logueados (y no es anónimo), mostramos admin
                 if (auth.currentUser && !auth.currentUser.isAnonymous) {
                     showView('admin-view');
                     listenForMeetings();
                     listenForTeachers();
                 } else {
-                    // Si estamos logueados como anónimo pero sin parámetros de reunión, 
-                    // probablemente es un residuo, hacemos logout o mostramos home
                     if (auth.currentUser?.isAnonymous) {
-                        // Opcional: signOut(auth);
                         showView('role-selection-view');
                     } else {
                         showView('role-selection-view');
@@ -419,19 +429,17 @@
                 const meetingName = meetingSnap.exists() ? meetingSnap.data().name : 'Reunión desconocida';
                 const savedName = localStorage.getItem('teacherName');
                 
-                // Precarga para el autocompletado si no tiene nombre guardado
                 let teachersDatalist = '';
                 if (!savedName) {
                     try {
                         const teachersSnap = await getDocs(collection(db, 'teachers'));
                         const teacherNames = teachersSnap.docs.map(d => d.data().name).sort();
                         teachersDatalist = `<datalist id="teacher-suggestions">${teacherNames.map(n => `<option value="${n}">`).join('')}</datalist>`;
-                    } catch(e) { console.log("No se pudo cargar la lista sugerida", e); }
+                    } catch(e) { }
                 }
 
                 if (savedName) {
                     statusDiv.innerHTML = `
-                        <!-- LOGO DEL CENTRO -->
                         <img src="https://web.virgendelpasico.net/wp-content/uploads/2024/01/cropped-ncoop-scaled-1-300x253.jpg" alt="Logo Virgen del Pasico" class="app-logo">
                         <p class="text-xl font-semibold mb-4 text-gray-700">Asistencia para: "${meetingName}"</p>
                         <p class="text-2xl text-gray-800 mb-2">¿Eres <strong class="font-bold">${savedName}</strong>?</p>
@@ -448,7 +456,6 @@
         }
 
         window.showChangeTeacherForm = async (meetingId, meetingName, preloadedDatalist = '') => {
-             // Si no viene precargado (caso de cambio manual), intentamos cargar la lista
              if (!preloadedDatalist) {
                  try {
                     const teachersSnap = await getDocs(collection(db, 'teachers'));
@@ -458,7 +465,6 @@
              }
 
              document.getElementById('teacher-status-message').innerHTML = `
-                <!-- LOGO DEL CENTRO -->
                 <img src="https://web.virgendelpasico.net/wp-content/uploads/2024/01/cropped-ncoop-scaled-1-300x253.jpg" alt="Logo Virgen del Pasico" class="app-logo">
                 <p class="text-xl font-semibold mb-4 text-gray-700">Asistencia para: "${meetingName}"</p>
                 <p class="text-gray-600 mb-6">Introduce tu nombre completo:</p>
@@ -491,10 +497,8 @@
                 }
             }
 
-            // Obtener o crear ID de profesor
             let teacherId = localStorage.getItem('teacherId');
             
-            // Intento de buscar ID existente si el nombre coincide con la base de datos (para unificar)
             if (!teacherId || !isRecognized) {
                 const teachersCol = collection(db, `teachers`);
                 const q = query(teachersCol, where("name", "==", name));
@@ -517,7 +521,6 @@
             const meetingData = meetingSnap.data();
 
             try {
-                // Verificar duplicados
                 const existingAttendanceQuery = query(collection(db, `meetings/${meetingId}/attendees`), where("teacherId", "==", teacherId));
                 const existingSnapshot = await getDocs(existingAttendanceQuery);
 
@@ -532,7 +535,6 @@
 
                 await addDoc(collection(db, `meetings/${meetingId}/attendees`), { name, teacherId, timestamp: serverTimestamp() });
                 await setDoc(doc(db, `teachers/${teacherId}/attendedMeetings/${meetingId}`), { meetingName: meetingData.name, meetingDate: meetingData.createdAt });
-                
                 localStorage.setItem('teacherName', name);
                 localStorage.setItem('teacherId', teacherId);
                 
@@ -547,15 +549,12 @@
             }
         };
 
-        // --- LÓGICA ADMIN (QR, Listas, Informes) ---
         const QR_LIFESPAN_MS = 30000;
         window.showQrCode = (meetingId, meetingName) => {
             document.getElementById('modal-title').textContent = `QR para: ${meetingName}`;
             const modalBody = document.getElementById('modal-body');
             modalBody.innerHTML = `
-                <!-- LOGO DEL CENTRO -->
-                <img src="https://web.virgendelpasico.net/wp-content/uploads/2024/01/cropped-ncoop-scaled-1-300x253.jpg" alt="Logo Virgen del Pasico" class="app-logo">
-
+                <img src="https://web.virgendelpasico.net/wp-content/uploads/2024/01/cropped-ncoop-scaled-1-300x253.jpg" alt="Logo" class="app-logo">
                 <p class="text-center text-gray-600 mb-4">Escanea para firmar. Se actualiza cada ${QR_LIFESPAN_MS / 1000}s.</p>
                 <div id="qrcode-container" class="flex justify-center p-4 bg-white border rounded-lg relative">
                     <div id="qrcode"></div>
@@ -604,15 +603,23 @@
             try {
                 await addDoc(collection(db, `meetings`), { name, createdAt: serverTimestamp(), createdBy: userId });
                 document.getElementById('meeting-name').value = '';
-            } catch (error) { console.error("Error creating meeting: ", error); }
+                showToast("Sesión creada correctamente", "success");
+            } catch (error) { 
+                console.error("Error creating meeting: ", error);
+                showToast("Error al crear la sesión", "error");
+            }
         };
         
         window.deleteMeeting = async (meetingId) => {
             if(!confirm("¿Borrar esta sesión? Se perderá el acceso a la lista desde aquí.")) return;
-            try { await deleteDoc(doc(db, `meetings/${meetingId}`)); } catch (error) { alert("Error al borrar"); }
+            try { 
+                await deleteDoc(doc(db, `meetings/${meetingId}`));
+                showToast("Sesión borrada", "info");
+            } catch (error) { 
+                alert("Error al borrar"); 
+            }
         }
 
-        // Nueva función para abrir el modal de gestión de profesores
         window.openTeacherManagement = () => {
             document.getElementById('modal-title').textContent = "Gestión del Claustro";
             document.getElementById('modal-body').innerHTML = `
@@ -632,12 +639,12 @@
                 const list = document.getElementById('meetings-list');
                 const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a, b) => b.createdAt?.toMillis() - a.createdAt?.toMillis());
                 list.innerHTML = data.map(m => `
-                    <div class="flex flex-col md:flex-row justify-between items-center p-4 border rounded-lg bg-gray-50">
+                    <div class="flex flex-col md:flex-row justify-between items-center p-4 border rounded-lg bg-gray-50 hover:bg-white hover:shadow-sm transition-all">
                         <div class="mb-2 md:mb-0"><p class="font-bold text-indigo-700">${m.name}</p><p class="text-xs text-gray-500">${m.createdAt ? new Date(m.createdAt.toDate()).toLocaleString('es-ES') : ''}</p></div>
                         <div class="flex gap-2">
-                            <button onclick="showQrCode('${m.id}', '${m.name}')" class="bg-indigo-100 text-indigo-700 text-sm font-bold py-2 px-3 rounded hover:bg-indigo-200">QR</button>
-                            <button onclick="viewAttendance('${m.id}', '${m.name}')" class="bg-blue-100 text-blue-700 text-sm font-bold py-2 px-3 rounded hover:bg-blue-200">Lista</button>
-                            <button onclick="deleteMeeting('${m.id}')" class="text-red-400 hover:text-red-600"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
+                            <button onclick="showQrCode('${m.id}', '${m.name}')" class="bg-indigo-100 text-indigo-700 text-sm font-bold py-2 px-3 rounded hover:bg-indigo-200 transition-colors">QR</button>
+                            <button onclick="viewAttendance('${m.id}', '${m.name}')" class="bg-blue-100 text-blue-700 text-sm font-bold py-2 px-3 rounded hover:bg-blue-200 transition-colors">Lista</button>
+                            <button onclick="deleteMeeting('${m.id}')" class="text-red-400 hover:text-red-600 p-2"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
                         </div>
                     </div>`).join('');
             });
@@ -647,6 +654,11 @@
             onSnapshot(query(collection(db, `teachers`)), (snapshot) => {
                 const teachers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a, b) => a.name.localeCompare(b.name));
                 allTeachersList = teachers;
+                
+                // Actualizar datalist global
+                document.getElementById('teacher-list-admin').innerHTML = teachers.map(t => `<option value="${t.name}">`).join('');
+                
+                // Actualizar multiselect de informes
                 document.getElementById('teacher-select').innerHTML = teachers.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
             });
         }
@@ -674,12 +686,12 @@
                         added++;
                     }
                 }
-                alert(`Importación completada. ${added} profesores nuevos añadidos.`);
+                showToast(`Importación: ${added} profesores añadidos.`, "success");
                 textarea.value = "";
-                closeModal(); // Cerrar modal tras importar
+                closeModal(); 
             } catch(e) {
                 console.error(e);
-                alert("Error durante la importación.");
+                showToast("Error durante la importación", "error");
             }
             btn.disabled = false;
             btn.innerHTML = originalText;
@@ -714,10 +726,10 @@
             const grouped = allData.reduce((acc, i) => { (acc[i.teacherName] = acc[i.teacherName] || []).push(i); return acc; }, {});
             let html = '';
             for(const name in grouped) {
-                html += `<div class="mb-4 bg-gray-50 p-3 rounded"><h4 class="font-bold text-indigo-700">${name} (${grouped[name].length})</h4><ul class="text-sm text-gray-600 pl-4 list-disc">${grouped[name].map(i => `<li>${i.meetingName} <span class="text-xs text-gray-400">(${new Date(i.meetingDate.toDate()).toLocaleDateString()})</span></li>`).join('')}</ul></div>`;
+                html += `<div class="mb-4 bg-gray-50 p-3 rounded shadow-sm border"><h4 class="font-bold text-indigo-700">${name} (${grouped[name].length})</h4><ul class="text-sm text-gray-600 pl-4 list-disc">${grouped[name].map(i => `<li>${i.meetingName} <span class="text-xs text-gray-400">(${new Date(i.meetingDate.toDate()).toLocaleDateString()})</span></li>`).join('')}</ul></div>`;
             }
             window.teacherReportDataForExport = allData;
-            html += `<button onclick="exportTeacherAttendanceToCSV()" class="w-full bg-green-500 text-white font-bold py-2 rounded mt-2">Exportar CSV</button>`;
+            html += `<button onclick="exportTeacherAttendanceToCSV()" class="w-full bg-green-500 text-white font-bold py-2 rounded mt-2 hover:bg-green-600 transition-colors">Exportar CSV</button>`;
             resDiv.innerHTML = html;
         };
 
@@ -727,9 +739,6 @@
             const link = document.createElement("a"); link.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv); link.download = `informe_profesores.csv`; link.click();
         };
 
-        // -------------------------
-        // NUEVA FUNCIÓN DE IMPRESIÓN
-        // -------------------------
         window.printAttendanceList = () => {
             if (!currentMeetingDataForPrint) return;
             const { name, attendees } = currentMeetingDataForPrint;
@@ -786,7 +795,6 @@
                     <script>
                         window.onload = function() { 
                             window.print(); 
-                            // window.close(); // Opcional: cerrar tras imprimir
                         }
                     <\/script>
                 </body>
@@ -798,7 +806,7 @@
         window.viewAttendance = (mId, mName) => {
             document.getElementById('modal-title').textContent = mName;
             
-            // Se inyecta botón de Imprimir en la cabecera
+            // Inyectar HTML para añadir manualmente
             document.getElementById('modal-body').innerHTML = `
                 <div class="flex justify-end mb-4">
                      <button onclick="printAttendanceList()" id="btn-print-list" disabled class="flex items-center gap-2 text-sm bg-white text-gray-700 hover:text-gray-900 border border-gray-300 hover:bg-gray-50 py-2 px-4 rounded-lg shadow-sm transition-colors opacity-50 cursor-not-allowed">
@@ -809,9 +817,12 @@
                      </button>
                 </div>
                 
-                <div class="bg-indigo-50 p-3 rounded mb-4 text-sm">
-                    <div class="flex gap-2"><select id="manual-teacher-select" class="flex-grow border rounded p-1"><option value="">-- Añadir manual --</option>${allTeachersList.map(t=>`<option value="${t.name}">${t.name}</option>`).join('')}</select></div>
-                    <div class="flex gap-2 mt-2"><input id="manual-teacher-name" placeholder="O nuevo nombre..." class="flex-grow border rounded p-1"><button onclick="manualRecordAttendance('${mId}')" class="bg-indigo-600 text-white px-3 rounded">Añadir</button></div>
+                <div class="bg-indigo-50 p-3 rounded-lg mb-4 text-sm">
+                    <p class="text-xs font-semibold mb-2 text-indigo-700">Añadir asistente manualmente:</p>
+                    <div class="flex gap-2">
+                         <input type="text" id="manual-teacher-name" list="teacher-list-admin" placeholder="Escribe el nombre..." class="flex-grow p-2 border rounded-md text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                         <button onclick="manualRecordAttendance('${mId}')" class="bg-indigo-600 text-white text-xs font-bold py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors">Añadir</button>
+                    </div>
                 </div>
                 <div id="attendance-list-container">Cargando...</div>`;
             openModal();
@@ -821,49 +832,56 @@
                 if(!list) return;
                 const data = snap.docs.map(d => d.data()).sort((a,b) => a.timestamp - b.timestamp);
                 
-                // GUARDAR DATOS GLOBALES PARA IMPRIMIR
                 currentMeetingDataForPrint = { name: mName, attendees: data };
                 
-                // Activar botón de imprimir
                 const btnPrint = document.getElementById('btn-print-list');
                 if(btnPrint) {
                     btnPrint.disabled = false;
                     btnPrint.classList.remove('opacity-50', 'cursor-not-allowed');
                 }
 
-                list.innerHTML = `<p class="mb-2 font-bold">Total: ${data.length}</p><ul class="max-h-60 overflow-y-auto">${data.map(a => `<li class="flex justify-between border-b py-2"><span>${a.name}</span><span class="text-xs text-gray-400">${a.timestamp?.toDate().toLocaleTimeString()||''}</span></li>`).join('')}</ul>`;
+                list.innerHTML = `<p class="mb-2 font-bold text-gray-700">Total: ${data.length}</p><ul class="max-h-60 overflow-y-auto border rounded-lg bg-white divide-y">${data.map(a => `<li class="flex justify-between py-2 px-3 hover:bg-gray-50"><span>${a.name}</span><span class="text-xs text-gray-400">${a.timestamp?.toDate().toLocaleTimeString()||''}</span></li>`).join('')}</ul>`;
             });
         }
 
         window.manualRecordAttendance = async (mId) => {
-            const sel = document.getElementById('manual-teacher-select');
             const inp = document.getElementById('manual-teacher-name');
-            const name = sel.value || inp.value.trim();
-            if(!name) return alert("Elige o escribe un nombre");
+            const name = inp.value.trim();
+            if(!name) {
+                showToast("Escribe un nombre", "error");
+                return;
+            }
             
-            // Buscar/Crear teacher
             let tid;
             const q = query(collection(db,'teachers'), where("name","==",name));
             const snap = await getDocs(q);
             if(snap.empty) { const ref = await addDoc(collection(db,'teachers'),{name}); tid = ref.id; }
             else tid = snap.docs[0].id;
 
-            // Registrar
             const mRef = await getDoc(doc(db,`meetings/${mId}`));
             const mData = mRef.data();
             try {
+                // Check dup
+                const existingQ = query(collection(db, `meetings/${mId}/attendees`), where("teacherId", "==", tid));
+                const existingSnap = await getDocs(existingQ);
+                if (!existingSnap.empty) {
+                    showToast(`${name} ya está en la lista`, "info");
+                    inp.value = "";
+                    return;
+                }
+
                 await addDoc(collection(db,`meetings/${mId}/attendees`),{name, teacherId:tid, timestamp: serverTimestamp()});
                 await setDoc(doc(db,`teachers/${tid}/attendedMeetings/${mId}`),{meetingName:mData.name, meetingDate:mData.createdAt});
-                alert("Añadido");
-            } catch(e) { console.error(e); alert("Error"); }
+                showToast("Añadido correctamente", "success");
+                inp.value = "";
+            } catch(e) { console.error(e); showToast("Error al añadir", "error"); }
         }
 
-        // --- NUEVAS FUNCIONES PARA INFORME GENERAL ---
         window.getGeneralAttendance = async () => {
             const startDate = document.getElementById('general-start-date').value;
             const endDate = document.getElementById('general-end-date').value;
             const resultsDiv = document.getElementById('general-attendance-results');
-            resultsDiv.innerHTML = '<p>Generando informe, esto puede tardar unos segundos...</p>';
+            resultsDiv.innerHTML = '<p class="text-gray-500 italic">Generando informe...</p>';
 
             const teachersSnap = await getDocs(collection(db, 'teachers'));
             const teachers = teachersSnap.docs.map(doc => ({ id: doc.id, name: doc.data().name }));
@@ -888,14 +906,12 @@
 
             const fullReportData = await Promise.all(attendancePromises);
 
-            // Guardar datos para exportar
             generalReportDataForExport = {report: fullReportData, meetings: meetings.map(m => ({...m, date: m.date.toISOString()})) };
 
-            // Botones arriba (movido desde abajo)
             let summaryHtml = `
             <div class="flex gap-2 mb-4">
-                <button onclick="exportGeneralAttendanceToCSV()" class="flex-1 bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700">Exportar CSV</button>
-                <button onclick="printGeneralReport()" class="flex-1 bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-indigo-700 flex justify-center items-center gap-2">
+                <button onclick="exportGeneralAttendanceToCSV()" class="flex-1 bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700 shadow-sm transition-colors">Exportar CSV</button>
+                <button onclick="printGeneralReport()" class="flex-1 bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-indigo-700 shadow-sm transition-colors flex justify-center items-center gap-2">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                     </svg>
@@ -904,25 +920,25 @@
             </div>
             `;
 
-            // Generar tabla HTML para mostrar en pantalla (simplificada)
-            summaryHtml += '<div class="overflow-x-auto"><table class="min-w-full text-xs text-left mt-4 border-collapse">';
-            summaryHtml += '<thead><tr><th class="border p-2 bg-gray-100">Profesor</th>';
+            summaryHtml += '<div class="overflow-x-auto border rounded-lg"><table class="min-w-full text-xs text-left bg-white">';
+            summaryHtml += '<thead class="bg-gray-50"><tr><th class="border-b p-3 font-semibold text-gray-600">Profesor</th>';
             meetings.forEach(m => {
-                summaryHtml += `<th class="border p-2 bg-gray-100 font-normal"><div class="transform -rotate-45 origin-bottom-left translate-x-4 mb-2" style="height: 80px; width: 20px;">${m.name}<br><span class="text-xs text-gray-500">${m.date.toLocaleDateString()}</span></div></th>`;
+                summaryHtml += `<th class="border-b p-3 font-normal text-center min-w-[80px]"><div class="text-xs">${m.name}<br><span class="text-gray-400 text-[10px]">${m.date.toLocaleDateString()}</span></div></th>`;
             });
-            summaryHtml += '<th class="border p-2 bg-gray-100 font-bold">Total</th></tr></thead><tbody>';
+            summaryHtml += '<th class="border-b p-3 font-bold text-center bg-gray-100">Total</th></tr></thead><tbody>';
             
-            fullReportData.forEach(teacherData => {
+            fullReportData.forEach((teacherData, idx) => {
                 const attendedCount = [...teacherData.attendedMeetingIds].filter(id => meetings.some(m => m.id === id)).length;
-                summaryHtml += `<tr><td class="border p-2 font-medium">${teacherData.name}</td>`;
+                const rowClass = idx % 2 === 0 ? 'bg-white' : 'bg-gray-50';
+                summaryHtml += `<tr class="${rowClass}"><td class="border-b p-2 font-medium border-r">${teacherData.name}</td>`;
                 meetings.forEach(meeting => {
                     if(teacherData.attendedMeetingIds.has(meeting.id)) {
-                        summaryHtml += '<td class="border p-2 text-center bg-green-100 text-green-800 font-bold">X</td>';
+                        summaryHtml += '<td class="border-b p-2 text-center text-green-600 font-bold border-r bg-green-50">✓</td>';
                     } else {
-                        summaryHtml += '<td class="border p-2"></td>';
+                        summaryHtml += '<td class="border-b p-2 border-r"></td>';
                     }
                 });
-                summaryHtml += `<td class="border p-2 text-center font-bold">${attendedCount}</td></tr>`;
+                summaryHtml += `<td class="border-b p-2 text-center font-bold bg-gray-100">${attendedCount}</td></tr>`;
             });
             summaryHtml += '</tbody></table></div>';
 
@@ -943,20 +959,22 @@
                     <title>Informe General de Asistencia</title>
                     <style>
                         body { font-family: 'Inter', sans-serif; padding: 20px; color: #333; }
-                        .header { text-align: center; margin-bottom: 20px; }
+                        .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #eee; padding-bottom: 20px; }
                         .logo { height: 60px; margin-bottom: 10px; }
-                        h1 { font-size: 20px; margin: 0; }
-                        .subtitle { font-size: 12px; color: #666; margin-top: 5px; }
-                        table { width: 100%; border-collapse: collapse; font-size: 10px; margin-top: 20px; }
-                        th, td { border: 1px solid #ccc; padding: 4px; text-align: center; }
-                        th.rotate { height: 100px; white-space: nowrap; }
-                        th.rotate > div { transform: translate(0px, 40px) rotate(270deg); width: 20px; margin: 0 auto; }
-                        th.name-col { text-align: left; width: 150px; }
-                        td.name-col { text-align: left; font-weight: bold; }
-                        .attended { background-color: #d1fae5; color: #065f46; font-weight: bold; }
-                        .footer { margin-top: 30px; border-top: 1px solid #333; padding-top: 10px; font-size: 10px; display: flex; justify-content: space-between; }
+                        h1 { font-size: 24px; margin: 0; color: #1f2937; }
+                        .subtitle { font-size: 14px; color: #6b7280; margin-top: 5px; }
+                        table { width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 20px; }
+                        th, td { border: 1px solid #e5e7eb; padding: 6px; text-align: center; }
+                        th.name-col { text-align: left; width: 200px; background-color: #f9fafb; font-weight: bold; }
+                        td.name-col { text-align: left; font-weight: 600; }
+                        th.meeting-header { background-color: #f9fafb; font-weight: normal; vertical-align: bottom; height: 80px; }
+                        .meeting-date { display: block; font-size: 9px; color: #9ca3af; margin-top: 4px; }
+                        .attended { background-color: #d1fae5; color: #065f46; font-weight: bold; font-size: 14px; }
+                        .total-col { background-color: #f3f4f6; font-weight: bold; }
+                        .footer { margin-top: 40px; border-top: 1px solid #333; padding-top: 10px; font-size: 10px; display: flex; justify-content: space-between; }
+                        tr:nth-child(even) { background-color: #f9fafb; }
                         @media print {
-                            @page { size: landscape; } /* Force landscape for wide tables */
+                            @page { size: landscape; margin: 1cm; }
                             body { -webkit-print-color-adjust: exact; }
                         }
                     </style>
@@ -972,8 +990,8 @@
                         <thead>
                             <tr>
                                 <th class="name-col">Profesor</th>
-                                ${meetings.map(m => `<th>${m.name}<br><span style="font-weight:normal">${new Date(m.date).toLocaleDateString()}</span></th>`).join('')}
-                                <th>Total</th>
+                                ${meetings.map(m => `<th class="meeting-header">${m.name}<span class="meeting-date">${new Date(m.date).toLocaleDateString()}</span></th>`).join('')}
+                                <th class="total-col">Total</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -982,14 +1000,14 @@
                                 const row = `<tr>
                                     <td class="name-col">${t.name}</td>
                                     ${meetings.map(m => {
-                                        if (t.attendedMeetingIds.has(m.id)) { // Changed from t.attended to t.attendedMeetingIds based on getGeneralAttendance logic
+                                        if (t.attendedMeetingIds.has(m.id)) {
                                             count++;
-                                            return '<td class="attended">X</td>';
+                                            return '<td class="attended">✓</td>';
                                         } else {
                                             return '<td></td>';
                                         }
                                     }).join('')}
-                                    <td style="font-weight:bold">${count}</td>
+                                    <td class="total-col">${count}</td>
                                 </tr>`;
                                 return row;
                             }).join('')}
