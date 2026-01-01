@@ -858,58 +858,196 @@
             } catch(e) { console.error(e); alert("Error"); }
         }
 
+        // --- NUEVAS FUNCIONES PARA INFORME GENERAL ---
         window.getGeneralAttendance = async () => {
-            const resDiv = document.getElementById('general-attendance-results');
-            resDiv.innerHTML = 'Generando...';
+            const startDate = document.getElementById('general-start-date').value;
+            const endDate = document.getElementById('general-end-date').value;
+            const resultsDiv = document.getElementById('general-attendance-results');
+            resultsDiv.innerHTML = '<p>Generando informe, esto puede tardar unos segundos...</p>';
+
+            const teachersSnap = await getDocs(collection(db, 'teachers'));
+            const teachers = teachersSnap.docs.map(doc => ({ id: doc.id, name: doc.data().name }));
+            teachers.sort((a, b) => a.name.localeCompare(b.name));
+
+            let meetingsQuery = query(collection(db, 'meetings'));
+            if (startDate) meetingsQuery = query(meetingsQuery, where("createdAt", ">=", Timestamp.fromDate(new Date(startDate))));
+            if (endDate) {
+                 const endOfDay = new Date(endDate);
+                 endOfDay.setHours(23, 59, 59, 999);
+                 meetingsQuery = query(meetingsQuery, where("createdAt", "<=", Timestamp.fromDate(endOfDay)));
+            }
+            const meetingsSnap = await getDocs(meetingsQuery);
+            const meetings = meetingsSnap.docs.map(doc => ({ id: doc.id, name: doc.data().name, date: doc.data().createdAt.toDate() }));
+            meetings.sort((a, b) => a.date - b.date);
+
+            const attendancePromises = teachers.map(async (teacher) => {
+                const attendedMeetingsSnap = await getDocs(collection(db, `teachers/${teacher.id}/attendedMeetings`));
+                const attendedMeetingIds = new Set(attendedMeetingsSnap.docs.map(doc => doc.id));
+                return { ...teacher, attendedMeetingIds };
+            });
+
+            const fullReportData = await Promise.all(attendancePromises);
+
+            // Generar tabla HTML para mostrar en pantalla (simplificada)
+            let summaryHtml = '<div class="overflow-x-auto"><table class="min-w-full text-xs text-left mt-4 border-collapse">';
+            summaryHtml += '<thead><tr><th class="border p-2 bg-gray-100">Profesor</th>';
+            meetings.forEach(m => {
+                summaryHtml += `<th class="border p-2 bg-gray-100 font-normal"><div class="transform -rotate-45 origin-bottom-left translate-x-4 mb-2" style="height: 80px; width: 20px;">${m.name}<br><span class="text-xs text-gray-500">${m.date.toLocaleDateString()}</span></div></th>`;
+            });
+            summaryHtml += '<th class="border p-2 bg-gray-100 font-bold">Total</th></tr></thead><tbody>';
+            
+            fullReportData.forEach(teacherData => {
+                const attendedCount = [...teacherData.attendedMeetingIds].filter(id => meetings.some(m => m.id === id)).length;
+                summaryHtml += `<tr><td class="border p-2 font-medium">${teacherData.name}</td>`;
+                meetings.forEach(meeting => {
+                    if(teacherData.attendedMeetingIds.has(meeting.id)) {
+                        summaryHtml += '<td class="border p-2 text-center bg-green-100 text-green-800 font-bold">X</td>';
+                    } else {
+                        summaryHtml += '<td class="border p-2"></td>';
+                    }
+                });
+                summaryHtml += `<td class="border p-2 text-center font-bold">${attendedCount}</td></tr>`;
+            });
+            summaryHtml += '</tbody></table></div>';
+            
+            // Guardar datos para exportar
+            generalReportDataForExport = {report: fullReportData, meetings: meetings.map(m => ({...m, date: m.date.toISOString()})) };
+
+            summaryHtml += `
+            <div class="flex gap-2 mt-4">
+                <button onclick="exportGeneralAttendanceToCSV()" class="flex-1 bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700">Exportar CSV</button>
+                <button onclick="printGeneralReport()" class="flex-1 bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-indigo-700 flex justify-center items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                    </svg>
+                    Imprimir / PDF
+                </button>
+            </div>
+            `;
+
+            resultsDiv.innerHTML = summaryHtml;
+        };
+        
+        window.printGeneralReport = () => {
+            if (!generalReportDataForExport) return;
+            const { report, meetings } = generalReportDataForExport;
             const start = document.getElementById('general-start-date').value;
             const end = document.getElementById('general-end-date').value;
-            
-            const tSnap = await getDocs(collection(db,'teachers'));
-            const teachers = tSnap.docs.map(d=>({id:d.id, name:d.data().name})).sort((a,b)=>a.name.localeCompare(b.name));
-            
-            let mQuery = query(collection(db,'meetings'));
-            if(start) mQuery = query(mQuery, where("createdAt", ">=", Timestamp.fromDate(new Date(start))));
-            if(end) { const e = new Date(end); e.setHours(23,59,59); mQuery = query(mQuery, where("createdAt", "<=", Timestamp.fromDate(e))); }
-            const mSnap = await getDocs(mQuery);
-            const meetings = mSnap.docs.map(d=>({id:d.id, ...d.data(), date:d.data().createdAt.toDate()})).sort((a,b)=>a.date-b.date);
+            const dateRange = start && end ? `Desde ${new Date(start).toLocaleDateString()} hasta ${new Date(end).toLocaleDateString()}` : 'Informe Completo';
 
-            const report = await Promise.all(teachers.map(async t => {
-                const attSnap = await getDocs(collection(db,`teachers/${t.id}/attendedMeetings`));
-                return { ...t, attended: new Set(attSnap.docs.map(d=>d.id)) };
-            }));
-
-            let html = '<div class="overflow-x-auto"><table class="min-w-full text-xs text-left"><thead><tr><th class="border p-1">Profesor</th>' + meetings.map(m=>`<th class="border p-1 transform -rotate-45 h-24 align-bottom">${m.name}<br><span class="text-gray-400">${m.date.toLocaleDateString()}</span></th>`).join('') + '<th class="border p-1 font-bold">Total</th></tr></thead><tbody>';
-            
-            report.forEach(t => {
-                let count = 0;
-                html += `<tr><td class="border p-1 font-medium">${t.name}</td>`;
-                meetings.forEach(m => {
-                    if(t.attended.has(m.id)) { html += '<td class="border p-1 text-center bg-green-100 text-green-700 font-bold">X</td>'; count++; }
-                    else html += '<td class="border p-1"></td>';
-                });
-                html += `<td class="border p-1 font-bold text-center">${count}</td></tr>`;
-            });
-            html += '</tbody></table></div>';
-            
-            generalReportDataForExport = { report, meetings };
-            html += `<button onclick="exportGeneralAttendanceToCSV()" class="mt-4 w-full bg-green-500 text-white font-bold py-2 rounded">Exportar CSV</button>`;
-            resDiv.innerHTML = html;
-        };
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(`
+                <html>
+                <head>
+                    <title>Informe General de Asistencia</title>
+                    <style>
+                        body { font-family: 'Inter', sans-serif; padding: 20px; color: #333; }
+                        .header { text-align: center; margin-bottom: 20px; }
+                        .logo { height: 60px; margin-bottom: 10px; }
+                        h1 { font-size: 20px; margin: 0; }
+                        .subtitle { font-size: 12px; color: #666; margin-top: 5px; }
+                        table { width: 100%; border-collapse: collapse; font-size: 10px; margin-top: 20px; }
+                        th, td { border: 1px solid #ccc; padding: 4px; text-align: center; }
+                        th.rotate { height: 100px; white-space: nowrap; }
+                        th.rotate > div { transform: translate(0px, 40px) rotate(270deg); width: 20px; margin: 0 auto; }
+                        th.name-col { text-align: left; width: 150px; }
+                        td.name-col { text-align: left; font-weight: bold; }
+                        .attended { background-color: #d1fae5; color: #065f46; font-weight: bold; }
+                        .footer { margin-top: 30px; border-top: 1px solid #333; padding-top: 10px; font-size: 10px; display: flex; justify-content: space-between; }
+                        @media print {
+                            @page { size: landscape; } /* Force landscape for wide tables */
+                            body { -webkit-print-color-adjust: exact; }
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="header">
+                        <img src="https://web.virgendelpasico.net/wp-content/uploads/2024/01/cropped-ncoop-scaled-1-300x253.jpg" class="logo" alt="Logo">
+                        <h1>Informe General de Asistencia</h1>
+                        <div class="subtitle">${dateRange}</div>
+                    </div>
+                    
+                    <table>
+                        <thead>
+                            <tr>
+                                <th class="name-col">Profesor</th>
+                                ${meetings.map(m => `<th>${m.name}<br><span style="font-weight:normal">${new Date(m.date).toLocaleDateString()}</span></th>`).join('')}
+                                <th>Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${report.map(t => {
+                                let count = 0;
+                                const row = `<tr>
+                                    <td class="name-col">${t.name}</td>
+                                    ${meetings.map(m => {
+                                        if (t.attendedMeetingIds.has(m.id)) { // Changed from t.attended to t.attendedMeetingIds based on getGeneralAttendance logic
+                                            count++;
+                                            return '<td class="attended">X</td>';
+                                        } else {
+                                            return '<td></td>';
+                                        }
+                                    }).join('')}
+                                    <td style="font-weight:bold">${count}</td>
+                                </tr>`;
+                                return row;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                    
+                    <div class="footer">
+                        <span>Firma de Dirección:</span>
+                        <span>Fecha de emisión: ${new Date().toLocaleDateString()}</span>
+                    </div>
+                    
+                    <script>
+                        window.onload = function() { window.print(); }
+                    <\/script>
+                </body>
+                </html>
+            `);
+            printWindow.document.close();
+        }
 
         window.exportGeneralAttendanceToCSV = () => {
+            if (!generalReportDataForExport) {
+                console.error("No hay datos para exportar.");
+                return;
+            }
             const { report, meetings } = generalReportDataForExport;
-            let csv = "Profesor," + meetings.map(m=>`"${m.name} (${m.date.toLocaleDateString()})"`).join(",") + ",Total\n";
-            report.forEach(t => {
-                let count = 0;
-                csv += `"${t.name}",` + meetings.map(m => {
-                    if(t.attended.has(m.id)) { count++; return "X"; } else return "";
-                }).join(",") + `,${count}\n`;
+            
+            let csvContent = "Profesor,";
+            meetings.forEach(meeting => {
+                csvContent += `"${meeting.name} (${new Date(meeting.date).toLocaleDateString('es-ES')})",`;
             });
-            const link = document.createElement("a"); link.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv); link.download = `resumen_general.csv`; link.click();
-        }
+            csvContent += "Total\n";
+
+            report.forEach(teacherData => {
+                csvContent += `"${teacherData.name}",`;
+                let total = 0;
+                meetings.forEach(meeting => {
+                    if (teacherData.attendedMeetingIds.has(meeting.id)) {
+                        csvContent += "X,";
+                        total++;
+                    } else {
+                        csvContent += ",";
+                    }
+                });
+                csvContent += `${total}\n`;
+            });
+
+            const link = document.createElement("a");
+            link.setAttribute("href", 'data:text/csv;charset=utf-8,' + encodeURIComponent(csvContent));
+            link.setAttribute("download", `informe_general_asistencia.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        };
 
         function openModal() { document.getElementById('modal').classList.remove('hidden'); document.body.classList.add('modal-active'); }
         window.closeModal = () => { clearInterval(qrInterval); document.getElementById('modal').classList.add('hidden'); document.body.classList.remove('modal-active'); }
     </script>
 </body>
 </html>
+```
+```eof
