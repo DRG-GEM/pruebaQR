@@ -43,43 +43,52 @@
              <div class="lds-dual-ring"></div>
         </div>
 
-        <!-- Vista de Selección de Rol (oculta por defecto) -->
+        <!-- Vista de Acceso Dirección (Antes Selección de Rol) -->
         <div id="role-selection-view" class="hidden">
-            <div class="bg-white p-8 rounded-2xl shadow-lg text-center">
-                <h1 class="text-3xl font-bold text-indigo-600 mb-4">Control de Asistencia</h1>
-                <p class="text-gray-600 mb-8">Selecciona tu rol para continuar.</p>
-                <div class="flex flex-col md:flex-row gap-4 justify-center">
-                    <button onclick="showView('admin-view')" class="bg-indigo-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-indigo-700 transition-colors shadow-md">Soy Administrador/a</button>
-                    <button onclick="showView('teacher-view')" class="bg-gray-200 text-gray-800 font-bold py-3 px-6 rounded-lg hover:bg-gray-300 transition-colors shadow-md">Soy Profesor/a</button>
+            <div class="bg-white p-8 rounded-2xl shadow-lg text-center max-w-lg mx-auto mt-10">
+                <!-- INSERTA AQUÍ LA URL DE TU LOGO -->
+                <img src="https://placehold.co/150x50/ffffff/4f46e5?text=Tu+Logo+Aquí" alt="Logo del Colegio" class="mx-auto h-16 mb-6" onerror="this.style.display='none'">
+                
+                <h1 class="text-3xl font-bold text-gray-800 mb-2">Control de Asistencia</h1>
+                <p class="text-gray-500 mb-8">Acceso exclusivo para el equipo directivo</p>
+                
+                <div class="flex flex-col gap-4 justify-center">
+                    <button onclick="showView('admin-view')" class="w-full bg-indigo-600 text-white font-bold py-4 px-6 rounded-xl hover:bg-indigo-700 transition-colors shadow-md flex items-center justify-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                        </svg>
+                        Entrar al Panel de Dirección
+                    </button>
                 </div>
+                <p class="mt-8 text-xs text-gray-400">Los profesores deben acceder escaneando el código QR de la reunión.</p>
             </div>
         </div>
 
         <!-- Vista del Administrador -->
         <div id="admin-view" class="hidden">
             <div class="flex justify-between items-center mb-6">
-                <h1 class="text-2xl font-bold text-indigo-600">Panel de Administrador</h1>
-                 <button onclick="showView('role-selection-view')" class="text-indigo-600 hover:underline">&larr; Volver</button>
+                <h1 class="text-2xl font-bold text-indigo-600">Panel de Dirección</h1>
+                 <button onclick="showView('role-selection-view')" class="text-gray-500 hover:text-indigo-600 text-sm font-medium">&larr; Salir</button>
             </div>
             
             <!-- Crear Sesión -->
-            <div class="bg-white p-6 rounded-2xl shadow-lg">
-                <h2 class="text-xl font-semibold mb-4">Crear Nueva Sesión de Asistencia</h2>
+            <div class="bg-white p-6 rounded-2xl shadow-lg border-l-4 border-indigo-500">
+                <h2 class="text-xl font-semibold mb-4 text-gray-800">Nueva Reunión</h2>
                 <div class="flex gap-4">
-                    <input type="text" id="meeting-name" placeholder="Nombre de la reunión (Ej: Claustro Mayo)" class="flex-grow p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                    <input type="text" id="meeting-name" placeholder="Nombre de la reunión (Ej: Claustro Final Curso)" class="flex-grow p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none">
                     <button onclick="createMeeting()" class="bg-indigo-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-indigo-700 transition-colors">Crear</button>
                 </div>
             </div>
             
             <!-- Sesiones Creadas -->
             <div class="bg-white p-6 rounded-2xl shadow-lg mt-6">
-                <h2 class="text-xl font-semibold mb-4">Sesiones Creadas</h2>
+                <h2 class="text-xl font-semibold mb-4 text-gray-800">Reuniones Activas e Histórico</h2>
                 <div id="meetings-list" class="space-y-4"></div>
             </div>
 
             <!-- Informes -->
             <div class="bg-white p-6 rounded-2xl shadow-lg mt-6">
-                <h2 class="text-xl font-semibold mb-4">Informes de Asistencia</h2>
+                <h2 class="text-xl font-semibold mb-4 text-gray-800">Informes de Asistencia</h2>
                 
                 <!-- Pestañas -->
                 <div class="border-b border-gray-200">
@@ -141,10 +150,9 @@
         <!-- Vista del Profesor -->
         <div id="teacher-view" class="hidden">
             <div class="flex justify-between items-center mb-6">
-                <h1 class="text-2xl font-bold text-indigo-600">Registro de Asistencia</h1>
-                <button onclick="showView('role-selection-view')" class="text-indigo-600 hover:underline">&larr; Volver</button>
+                <!-- Se ha eliminado el botón de volver para el profesor, ya no es necesario -->
             </div>
-            <div id="teacher-status-message" class="bg-white p-8 rounded-2xl shadow-lg text-center"></div>
+            <div id="teacher-status-message" class="bg-white p-8 rounded-2xl shadow-lg text-center mt-10"></div>
         </div>
     </div>
 
@@ -171,14 +179,15 @@
 
         // *******************************************************************
         // PEGA AQUÍ TU CONFIGURACIÓN DE FIREBASE
+        // Reemplaza este objeto de ejemplo con el que copiaste de tu consola de Firebase
         const firebaseConfig = {
-  apiKey: "AIzaSyCu7P0nV5vSeqvwLtfUpHIpnAgGu9Dx3mY",
-  authDomain: "control-asistencia-pruebas.firebaseapp.com",
-  projectId: "control-asistencia-pruebas",
-  storageBucket: "control-asistencia-pruebas.firebasestorage.app",
-  messagingSenderId: "429481399686",
-  appId: "1:429481399686:web:955659d3e70826b22a0807",
-  measurementId: "G-104TMJF8R4"
+          apiKey: "AIzaSyCu7P0nV5vSeqvwLtfUpHIpnAgGu9Dx3mY",
+          authDomain: "control-asistencia-pruebas.firebaseapp.com",
+          projectId: "control-asistencia-pruebas",
+          storageBucket: "control-asistencia-pruebas.firebasestorage.app",
+          messagingSenderId: "429481399686",
+          appId: "1:429481399686:web:955659d3e70826b22a0807",
+          measurementId: "G-104TMJF8R4"
         };
         // *******************************************************************
 
@@ -220,8 +229,10 @@
         function setupUIFromURL() {
             const params = new URLSearchParams(window.location.search);
             if (params.has('meeting') && params.has('token')) {
+                // Flujo de profesor (QR escaneado)
                 validateTokenAndShowTeacherView(params.get('meeting'), params.get('token'));
             } else {
+                // Flujo de administración (Acceso directo)
                 showView('role-selection-view');
                 listenForMeetings();
                 listenForTeachers();
@@ -263,6 +274,8 @@
                 const savedName = localStorage.getItem('teacherName');
                 if (savedName) {
                     statusDiv.innerHTML = `
+                        <!-- INSERTA AQUÍ LA URL DE TU LOGO -->
+                        <img src="https://placehold.co/150x50/ffffff/4f46e5?text=Tu+Logo+Aquí" alt="Logo del Colegio" class="mx-auto h-16 mb-6" onerror="this.style.display='none'">
                         <p class="text-xl font-semibold mb-4 text-gray-700">Asistencia para: "${meetingName}"</p>
                         <p class="text-2xl text-gray-800 mb-2">¿Eres <strong class="font-bold">${savedName}</strong>?</p>
                         <p class="text-gray-500 mb-6">Confirma para registrar tu asistencia.</p>
@@ -279,6 +292,8 @@
 
         window.showChangeTeacherForm = (meetingId, meetingName) => {
              document.getElementById('teacher-status-message').innerHTML = `
+                <!-- INSERTA AQUÍ LA URL DE TU LOGO -->
+                <img src="https://placehold.co/150x50/ffffff/4f46e5?text=Tu+Logo+Aquí" alt="Logo del Colegio" class="mx-auto h-16 mb-6" onerror="this.style.display='none'">
                 <p class="text-xl font-semibold mb-4 text-gray-700">Asistencia para: "${meetingName}"</p>
                 <p class="text-gray-600 mb-6">Introduce tu nombre completo para firmar. Solo tendrás que hacerlo una vez.</p>
                 <input type="text" id="teacher-name-input" placeholder="Nombre y Apellidos" class="w-full max-w-md mx-auto p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none mb-6">
@@ -713,3 +728,5 @@
     </script>
 </body>
 </html>
+```
+```eof
