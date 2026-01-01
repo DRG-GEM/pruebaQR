@@ -4,13 +4,25 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistema de Asistencia con QR Dinámico</title>
-    <script src="[https://cdn.tailwindcss.com](https://cdn.tailwindcss.com)"></script>
-    <script src="[https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js](https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js)"></script>
-    <link href="[https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap](https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap)" rel="stylesheet">
+    <!-- Librerías externas -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
     <style>
+        /* ESTILOS CRÍTICOS: Garantizan que la app se vea bien aunque falle Tailwind */
         body { font-family: 'Inter', sans-serif; }
+        
+        /* Esta regla es vital: asegura que lo que debe estar oculto, se quede oculto */
+        .hidden { display: none !important; }
+        
+        /* Asegura que el logo nunca sea gigante */
+        .app-logo { max-height: 100px; width: auto; margin: 0 auto 1.5rem auto; }
+        
         .modal { transition: opacity 0.25s ease; }
         body.modal-active { overflow: hidden; }
+        
+        /* Spinner de carga */
         .lds-dual-ring { display: inline-block; width: 80px; height: 80px; }
         .lds-dual-ring:after {
             content: " "; display: block; width: 64px; height: 64px; margin: 8px;
@@ -19,16 +31,13 @@
             animation: lds-dual-ring 1.2s linear infinite;
         }
         @keyframes lds-dual-ring { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
         #qr-timer-bar {
             height: 4px;
             background-color: #4f46e5;
             width: 100%;
         }
-        /* Estilo para el select múltiple */
-        #teacher-select option:checked {
-            background-color: #4f46e5;
-            color: white;
-        }
+        
         button:disabled {
             opacity: 0.7;
             cursor: not-allowed;
@@ -47,14 +56,14 @@
         <div id="role-selection-view" class="hidden">
             <div class="bg-white p-8 rounded-2xl shadow-lg text-center max-w-lg mx-auto mt-10">
                 <!-- LOGO DEL CENTRO -->
-                <img src="https://web.virgendelpasico.net//wp-content/uploads/2022/03/logo-pasico-1024x768.png" alt="Logo del Colegio" class="mx-auto h-20 mb-6">
+                <img src="https://web.virgendelpasico.net/wp-content/uploads/2024/01/cropped-ncoop-scaled-1-300x253.jpg" alt="Logo Virgen del Pasico" class="app-logo">
                 
                 <h1 class="text-3xl font-bold text-gray-800 mb-2">Control de Asistencia</h1>
                 <p class="text-gray-500 mb-8">Acceso exclusivo para el equipo directivo</p>
                 
                 <div class="flex flex-col gap-4 justify-center">
                     <button onclick="showView('admin-view')" class="w-full bg-indigo-600 text-white font-bold py-4 px-6 rounded-xl hover:bg-indigo-700 transition-colors shadow-md flex items-center justify-center gap-2">
-                        <svg xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                         </svg>
                         Entrar al Panel de Dirección
@@ -164,7 +173,7 @@
                 <div class="flex justify-between items-center pb-3">
                     <p id="modal-title" class="text-2xl font-bold"></p>
                     <div class="modal-close cursor-pointer z-50" onclick="closeModal()">
-                        <svg class="fill-current text-black" xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)" width="18" height="18" viewBox="0 0 18 18"><path d="M14.53 4.53l-1.06-1.06L9 7.94 4.53 3.47 3.47 4.53 7.94 9l-4.47 4.47 1.06 1.06L9 10.06l4.47 4.47 1.06-1.06L10.06 9z"></path></svg>
+                        <svg class="fill-current text-black" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 18 18"><path d="M14.53 4.53l-1.06-1.06L9 7.94 4.53 3.47 3.47 4.53 7.94 9l-4.47 4.47 1.06 1.06L9 10.06l4.47 4.47 1.06-1.06L10.06 9z"></path></svg>
                     </div>
                 </div>
                 <div id="modal-body" class="my-5"></div>
@@ -173,12 +182,12 @@
     </div>
 
     <script type="module">
-        import { initializeApp } from "[https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js](https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js)";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "[https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js](https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js)";
-        import { getFirestore, doc, addDoc, setDoc, getDoc, deleteDoc, getDocs, collection, onSnapshot, query, where, serverTimestamp, Timestamp } from "[https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js](https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js)";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, addDoc, setDoc, getDoc, deleteDoc, getDocs, collection, onSnapshot, query, where, serverTimestamp, Timestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // *******************************************************************
-        // CONFIGURACIÓN DE FIREBASE (YA INCLUIDA)
+        // CONFIGURACIÓN DE FIREBASE
         const firebaseConfig = {
           apiKey: "AIzaSyCu7P0nV5vSeqvwLtfUpHIpnAgGu9Dx3mY",
           authDomain: "control-asistencia-pruebas.firebaseapp.com",
@@ -196,8 +205,9 @@
         let allTeachersList = []; // Para el registro manual
         
         document.addEventListener('DOMContentLoaded', () => {
-             if (!firebaseConfig.apiKey || firebaseConfig.apiKey === "TU_API_KEY") {
-                document.getElementById('loading-screen').innerHTML = `<div class="bg-white p-8 rounded-lg shadow-xl text-center"><h2 class="text-2xl font-bold text-red-600">Error de Configuración</h2><p class="mt-4 text-gray-700">Por favor, pega tu configuración de Firebase en el archivo HTML para iniciar la aplicación.</p></div>`;
+             // Comprobación de seguridad
+             if (!firebaseConfig.apiKey || firebaseConfig.apiKey.includes("API_KEY")) {
+                document.getElementById('loading-screen').innerHTML = `<div class="bg-white p-8 rounded-lg shadow-xl text-center"><h2 class="text-2xl font-bold text-red-600">Error de Configuración</h2><p class="mt-4 text-gray-700">La configuración de Firebase no es correcta.</p></div>`;
                 return;
              }
 
@@ -274,7 +284,7 @@
                 if (savedName) {
                     statusDiv.innerHTML = `
                         <!-- LOGO DEL CENTRO -->
-                        <img src="[https://cdn-icons-png.flaticon.com/512/2997/2997235.png](https://cdn-icons-png.flaticon.com/512/2997/2997235.png)" alt="Logo del Colegio" class="mx-auto h-20 mb-6">
+                        <img src="https://web.virgendelpasico.net/wp-content/uploads/2024/01/cropped-ncoop-scaled-1-300x253.jpg" alt="Logo Virgen del Pasico" class="app-logo">
                         <p class="text-xl font-semibold mb-4 text-gray-700">Asistencia para: "${meetingName}"</p>
                         <p class="text-2xl text-gray-800 mb-2">¿Eres <strong class="font-bold">${savedName}</strong>?</p>
                         <p class="text-gray-500 mb-6">Confirma para registrar tu asistencia.</p>
@@ -292,7 +302,7 @@
         window.showChangeTeacherForm = (meetingId, meetingName) => {
              document.getElementById('teacher-status-message').innerHTML = `
                 <!-- LOGO DEL CENTRO -->
-                <img src="[https://cdn-icons-png.flaticon.com/512/2997/2997235.png](https://cdn-icons-png.flaticon.com/512/2997/2997235.png)" alt="Logo del Colegio" class="mx-auto h-20 mb-6">
+                <img src="https://web.virgendelpasico.net/wp-content/uploads/2024/01/cropped-ncoop-scaled-1-300x253.jpg" alt="Logo Virgen del Pasico" class="app-logo">
                 <p class="text-xl font-semibold mb-4 text-gray-700">Asistencia para: "${meetingName}"</p>
                 <p class="text-gray-600 mb-6">Introduce tu nombre completo para firmar. Solo tendrás que hacerlo una vez.</p>
                 <input type="text" id="teacher-name-input" placeholder="Nombre y Apellidos" class="w-full max-w-md mx-auto p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none mb-6">
@@ -390,7 +400,7 @@
             const modalBody = document.getElementById('modal-body');
             modalBody.innerHTML = `
                 <!-- LOGO DEL CENTRO -->
-                <img src="[https://cdn-icons-png.flaticon.com/512/2997/2997235.png](https://cdn-icons-png.flaticon.com/512/2997/2997235.png)" alt="Logo del Colegio" class="mx-auto h-16 mb-4">
+                <img src="https://web.virgendelpasico.net/wp-content/uploads/2024/01/cropped-ncoop-scaled-1-300x253.jpg" alt="Logo Virgen del Pasico" class="app-logo">
 
                 <p class="text-center text-gray-600 mb-4">Escanea este código. Se actualiza automáticamente cada ${QR_LIFESPAN_MS / 1000} segundos.</p>
                 <div id="qrcode-container" class="flex justify-center p-4 bg-white border rounded-lg relative">
@@ -474,7 +484,7 @@
                             <button onclick="showQrCode('${m.id}', '${m.name}')" class="bg-gray-200 text-sm font-bold py-2 px-4 rounded-lg hover:bg-gray-300">Mostrar QR</button>
                             <button onclick="viewAttendance('${m.id}', '${m.name}')" class="bg-blue-500 text-white text-sm font-bold py-2 px-4 rounded-lg hover:bg-blue-600">Ver Asistentes</button>
                             <button onclick="deleteMeeting('${m.id}')" class="text-red-500 hover:text-red-700 ml-2" title="Borrar sesión">
-                                <svg xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                 </svg>
                             </button>
