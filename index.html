@@ -79,6 +79,18 @@
                     <button onclick="createMeeting()" class="bg-indigo-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-indigo-700 transition-colors">Crear</button>
                 </div>
             </div>
+
+            <!-- Gestión de Claustro (NUEVO) -->
+            <div class="bg-white p-6 rounded-2xl shadow-lg mt-6 border-l-4 border-green-500">
+                <h2 class="text-xl font-semibold mb-4 text-gray-800">Gestión del Claustro</h2>
+                <p class="text-sm text-gray-600 mb-2">Pega aquí la lista de profesores (uno por línea) para precargarla. Esto ayudará a que el nombre salga sugerido al registrarse.</p>
+                <div class="flex flex-col gap-2">
+                    <textarea id="bulk-teachers" rows="3" placeholder="Ejemplo:
+Juan Pérez García
+María López Martínez..." class="p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none w-full text-sm"></textarea>
+                    <button onclick="importTeachers(this)" class="bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700 transition-colors self-end text-sm">Importar Lista</button>
+                </div>
+            </div>
             
             <!-- Sesiones Creadas -->
             <div class="bg-white p-6 rounded-2xl shadow-lg mt-6">
@@ -158,8 +170,8 @@
         // Pon aquí los correos que tendrán acceso al panel de administración.
         // Si dejas el array vacío [], CUALQUIERA con cuenta de Google podrá entrar (no recomendado).
         const AUTHORIZED_EMAILS = [
-            "raulrubio@virgendelpasico.net", 
-            "donraulvp@gmail.com" 
+            "donraulvp@gmail.com", 
+            "director@colegio.com" 
         ];
 
         const firebaseConfig = {
@@ -314,6 +326,17 @@
                 const meetingSnap = await getDoc(meetingRef);
                 const meetingName = meetingSnap.exists() ? meetingSnap.data().name : 'Reunión desconocida';
                 const savedName = localStorage.getItem('teacherName');
+                
+                // Precarga para el autocompletado si no tiene nombre guardado
+                let teachersDatalist = '';
+                if (!savedName) {
+                    try {
+                        const teachersSnap = await getDocs(collection(db, 'teachers'));
+                        const teacherNames = teachersSnap.docs.map(d => d.data().name).sort();
+                        teachersDatalist = `<datalist id="teacher-suggestions">${teacherNames.map(n => `<option value="${n}">`).join('')}</datalist>`;
+                    } catch(e) { console.log("No se pudo cargar la lista sugerida", e); }
+                }
+
                 if (savedName) {
                     statusDiv.innerHTML = `
                         <img src="https://web.virgendelpasico.net/wp-content/uploads/2024/01/cropped-ncoop-scaled-1-300x253.jpg" alt="Logo" class="app-logo">
@@ -324,19 +347,29 @@
                         <button onclick="showChangeTeacherForm('${meetingId}', '${meetingName}')" class="text-sm text-indigo-600 hover:underline">No soy yo / Cambiar nombre</button>
                     `;
                 } else {
-                    showChangeTeacherForm(meetingId, meetingName);
+                    showChangeTeacherForm(meetingId, meetingName, teachersDatalist);
                 }
             } else {
                 statusDiv.innerHTML = '<p class="text-red-500 font-bold text-xl">Código QR caducado o inválido.</p><p class="mt-2">Por favor, escanea el código que se muestra actualmente en la pantalla.</p>';
             }
         }
 
-        window.showChangeTeacherForm = (meetingId, meetingName) => {
+        window.showChangeTeacherForm = async (meetingId, meetingName, preloadedDatalist = '') => {
+             // Si no viene precargado (caso de cambio manual), intentamos cargar la lista
+             if (!preloadedDatalist) {
+                 try {
+                    const teachersSnap = await getDocs(collection(db, 'teachers'));
+                    const teacherNames = teachersSnap.docs.map(d => d.data().name).sort();
+                    preloadedDatalist = `<datalist id="teacher-suggestions">${teacherNames.map(n => `<option value="${n}">`).join('')}</datalist>`;
+                 } catch(e) {}
+             }
+
              document.getElementById('teacher-status-message').innerHTML = `
                 <img src="https://web.virgendelpasico.net/wp-content/uploads/2024/01/cropped-ncoop-scaled-1-300x253.jpg" alt="Logo" class="app-logo">
                 <p class="text-xl font-semibold mb-4 text-gray-700">Asistencia para: "${meetingName}"</p>
                 <p class="text-gray-600 mb-6">Introduce tu nombre completo:</p>
-                <input type="text" id="teacher-name-input" placeholder="Nombre y Apellidos" class="w-full max-w-md mx-auto p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none mb-6">
+                <input type="text" id="teacher-name-input" list="teacher-suggestions" placeholder="Empieza a escribir tu nombre..." class="w-full max-w-md mx-auto p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none mb-6">
+                ${preloadedDatalist}
                 <button id="confirm-new-btn" onclick="recordAttendance('${meetingId}', false, this)" class="w-full max-w-md mx-auto bg-green-500 text-white font-bold py-3 px-6 rounded-lg hover:bg-green-600 transition-colors text-lg">Confirmar Asistencia</button>
             `;
             const input = document.getElementById('teacher-name-input');
@@ -366,6 +399,8 @@
 
             // Obtener o crear ID de profesor
             let teacherId = localStorage.getItem('teacherId');
+            
+            // Intento de buscar ID existente si el nombre coincide con la base de datos (para unificar)
             if (!teacherId || !isRecognized) {
                 const teachersCol = collection(db, `teachers`);
                 const q = query(teachersCol, where("name", "==", name));
@@ -504,6 +539,39 @@
                 document.getElementById('teacher-select').innerHTML = teachers.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
             });
         }
+        
+        window.importTeachers = async (btn) => {
+            const textarea = document.getElementById('bulk-teachers');
+            const text = textarea.value.trim();
+            if(!text) return alert("Pega una lista de nombres");
+            
+            const names = text.split('\n').map(n => n.trim()).filter(n => n.length > 0);
+            if(names.length === 0) return alert("No hay nombres válidos");
+            
+            const originalText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = "Importando...";
+            
+            try {
+                const existingSnap = await getDocs(collection(db, 'teachers'));
+                const existingNames = new Set(existingSnap.docs.map(d => d.data().name.toLowerCase()));
+                
+                let added = 0;
+                for(const name of names) {
+                    if(!existingNames.has(name.toLowerCase())) {
+                        await addDoc(collection(db, 'teachers'), {name});
+                        added++;
+                    }
+                }
+                alert(`Importación completada. ${added} profesores nuevos añadidos.`);
+                textarea.value = "";
+            } catch(e) {
+                console.error(e);
+                alert("Error durante la importación.");
+            }
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        };
         
         window.selectAllTeachers = (val) => {
             const opts = document.getElementById('teacher-select').options;
