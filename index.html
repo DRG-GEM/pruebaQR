@@ -10,13 +10,19 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     
     <style>
-        /* ESTILOS CRÍTICOS */
+        /* ESTILOS CRÍTICOS: Garantizan que la app se vea bien aunque falle Tailwind */
         body { font-family: 'Inter', sans-serif; }
+        
+        /* Esta regla es vital: asegura que lo que debe estar oculto, se quede oculto */
         .hidden { display: none !important; }
+        
+        /* Asegura que el logo nunca sea gigante */
         .app-logo { max-height: 100px; width: auto; margin: 0 auto 1.5rem auto; }
+        
         .modal { transition: opacity 0.25s ease; }
         body.modal-active { overflow: hidden; }
         
+        /* Spinner de carga */
         .lds-dual-ring { display: inline-block; width: 80px; height: 80px; }
         .lds-dual-ring:after {
             content: " "; display: block; width: 64px; height: 64px; margin: 8px;
@@ -25,8 +31,17 @@
             animation: lds-dual-ring 1.2s linear infinite;
         }
         @keyframes lds-dual-ring { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        #qr-timer-bar { height: 4px; background-color: #4f46e5; width: 100%; }
-        button:disabled { opacity: 0.7; cursor: not-allowed; }
+        
+        #qr-timer-bar {
+            height: 4px;
+            background-color: #4f46e5;
+            width: 100%;
+        }
+        
+        button:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
     </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
@@ -37,9 +52,10 @@
              <div class="lds-dual-ring"></div>
         </div>
 
-        <!-- Vista de Acceso Dirección (Login Google) -->
+        <!-- Vista de Acceso Dirección (Antes Selección de Rol) -->
         <div id="role-selection-view" class="hidden">
             <div class="bg-white p-8 rounded-2xl shadow-lg text-center max-w-lg mx-auto mt-10">
+                <!-- LOGO DEL CENTRO -->
                 <img src="https://web.virgendelpasico.net/wp-content/uploads/2024/01/cropped-ncoop-scaled-1-300x253.jpg" alt="Logo Virgen del Pasico" class="app-logo">
                 
                 <h1 class="text-3xl font-bold text-gray-800 mb-2">Control de Asistencia</h1>
@@ -63,6 +79,14 @@
                 <div class="flex flex-wrap items-center gap-2 md:gap-4 justify-center">
                     <span id="admin-email-display" class="text-sm text-gray-500 hidden lg:inline"></span>
                     
+                    <!-- Botón Reset (NUEVO) -->
+                    <button onclick="resetTestData()" class="flex items-center gap-2 bg-red-50 text-red-700 px-3 py-2 rounded-lg border border-red-200 hover:bg-red-100 text-sm font-semibold transition-colors" title="Borrar toda la base de datos">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                        Resetear Pruebas
+                    </button>
+
                     <!-- Botón Gestión Claustro -->
                     <button onclick="openTeacherManagement()" class="flex items-center gap-2 bg-indigo-50 text-indigo-700 px-3 py-2 rounded-lg border border-indigo-200 hover:bg-indigo-100 text-sm font-semibold transition-colors">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -98,14 +122,20 @@
             <!-- Informes -->
             <div class="bg-white p-6 rounded-2xl shadow-lg mt-6">
                 <h2 class="text-xl font-semibold mb-4 text-gray-800">Informes de Asistencia</h2>
+                
+                <!-- Pestañas -->
                 <div class="border-b border-gray-200">
                     <nav class="-mb-px flex space-x-8" aria-label="Tabs">
-                        <button onclick="showTab('individual-report')" id="tab-individual-report" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-indigo-500 text-indigo-600">Informe por Profesor(es)</button>
-                        <button onclick="showTab('general-report')" id="tab-general-report" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">Informe General</button>
+                        <button onclick="showTab('individual-report')" id="tab-individual-report" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-indigo-500 text-indigo-600">
+                            Informe por Profesor(es)
+                        </button>
+                        <button onclick="showTab('general-report')" id="tab-general-report" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">
+                            Informe General
+                        </button>
                     </nav>
                 </div>
 
-                <!-- Contenido Informes -->
+                <!-- Contenido de Pestañas -->
                 <div id="individual-report-content" class="mt-6">
                     <h3 class="text-lg font-medium text-gray-800 mb-4">Consulta por Profesor(es)</h3>
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
@@ -113,13 +143,19 @@
                             <label for="teacher-select" class="block text-sm font-medium text-gray-700">Profesor(es)</label>
                             <select id="teacher-select" multiple class="mt-1 block w-full p-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 h-32"></select>
                             <div class="flex justify-between mt-1">
-                                <span class="text-xs text-gray-500">Mantén Ctrl/Cmd para varios.</span>
-                                <button onclick="selectAllTeachers(true)" class="text-xs text-indigo-600 hover:underline">Todos</button>
+                                <span class="text-xs text-gray-500">Mantén Ctrl/Cmd para seleccionar varios.</span>
+                                <button onclick="selectAllTeachers(true)" class="text-xs text-indigo-600 hover:underline">Seleccionar todos</button>
                             </div>
                         </div>
                         <div class="md:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-4">
-                             <div><label class="block text-sm font-medium text-gray-700">Desde</label><input type="date" id="start-date" class="mt-1 block w-full p-2 border border-gray-300 rounded-md"></div>
-                             <div><label class="block text-sm font-medium text-gray-700">Hasta</label><input type="date" id="end-date" class="mt-1 block w-full p-2 border border-gray-300 rounded-md"></div>
+                             <div>
+                                <label for="start-date" class="block text-sm font-medium text-gray-700">Desde</label>
+                                <input type="date" id="start-date" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm">
+                             </div>
+                             <div>
+                                <label for="end-date" class="block text-sm font-medium text-gray-700">Hasta</label>
+                                <input type="date" id="end-date" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm">
+                             </div>
                              <button onclick="getTeacherAttendance()" class="bg-blue-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-600 self-end">Consultar</button>
                         </div>
                     </div>
@@ -129,8 +165,14 @@
                 <div id="general-report-content" class="hidden mt-6">
                     <h3 class="text-lg font-medium text-gray-800 mb-4">Resumen General por Fechas</h3>
                      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-                         <div><label class="block text-sm font-medium text-gray-700">Desde</label><input type="date" id="general-start-date" class="mt-1 block w-full p-2 border border-gray-300 rounded-md"></div>
-                         <div><label class="block text-sm font-medium text-gray-700">Hasta</label><input type="date" id="general-end-date" class="mt-1 block w-full p-2 border border-gray-300 rounded-md"></div>
+                         <div>
+                            <label for="general-start-date" class="block text-sm font-medium text-gray-700">Desde</label>
+                            <input type="date" id="general-start-date" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm">
+                         </div>
+                         <div>
+                            <label for="general-end-date" class="block text-sm font-medium text-gray-700">Hasta</label>
+                            <input type="date" id="general-end-date" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm">
+                         </div>
                          <button onclick="getGeneralAttendance()" class="bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700 self-end">Generar Informe</button>
                     </div>
                     <div id="general-attendance-results" class="mt-6"></div>
@@ -140,18 +182,23 @@
 
         <!-- Vista del Profesor -->
         <div id="teacher-view" class="hidden">
+            <div class="flex justify-between items-center mb-6">
+                <!-- Se ha eliminado el botón de volver para el profesor, ya no es necesario -->
+            </div>
             <div id="teacher-status-message" class="bg-white p-8 rounded-2xl shadow-lg text-center mt-10"></div>
         </div>
     </div>
 
-    <!-- Modal -->
+    <!-- Modal para QR y Lista de Asistencia -->
     <div id="modal" class="modal fixed w-full h-full top-0 left-0 flex items-center justify-center hidden">
         <div class="modal-overlay absolute w-full h-full bg-gray-900 opacity-50" onclick="closeModal()"></div>
         <div class="modal-container bg-white w-11/12 md:max-w-2xl mx-auto rounded-2xl shadow-lg z-50 overflow-y-auto">
             <div class="modal-content py-4 text-left px-6">
                 <div class="flex justify-between items-center pb-3">
                     <p id="modal-title" class="text-2xl font-bold"></p>
-                    <div class="modal-close cursor-pointer z-50" onclick="closeModal()"><svg class="fill-current text-black" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 18 18"><path d="M14.53 4.53l-1.06-1.06L9 7.94 4.53 3.47 3.47 4.53 7.94 9l-4.47 4.47 1.06 1.06L9 10.06l4.47 4.47 1.06-1.06L10.06 9z"></path></svg></div>
+                    <div class="modal-close cursor-pointer z-50" onclick="closeModal()">
+                        <svg class="fill-current text-black" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 18 18"><path d="M14.53 4.53l-1.06-1.06L9 7.94 4.53 3.47 3.47 4.53 7.94 9l-4.47 4.47 1.06 1.06L9 10.06l4.47 4.47 1.06-1.06L10.06 9z"></path></svg>
+                    </div>
                 </div>
                 <div id="modal-body" class="my-5"></div>
             </div>
@@ -163,14 +210,8 @@
         import { getAuth, signInAnonymously, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, addDoc, setDoc, getDoc, deleteDoc, getDocs, collection, onSnapshot, query, where, serverTimestamp, Timestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // --- CONFIGURACIÓN ---
-        // Pon aquí los correos que tendrán acceso al panel de administración.
-        // Si dejas el array vacío [], CUALQUIERA con cuenta de Google podrá entrar (no recomendado).
-        const AUTHORIZED_EMAILS = [
-            "donraulvp@gmail.com", 
-            "director@colegio.com" 
-        ];
-
+        // *******************************************************************
+        // CONFIGURACIÓN DE FIREBASE
         const firebaseConfig = {
           apiKey: "AIzaSyCu7P0nV5vSeqvwLtfUpHIpnAgGu9Dx3mY",
           authDomain: "control-asistencia-pruebas.firebaseapp.com",
@@ -180,23 +221,31 @@
           appId: "1:429481399686:web:955659d3e70826b22a0807",
           measurementId: "G-104TMJF8R4"
         };
+        // *******************************************************************
+
+        // --- EMAILS AUTORIZADOS ---
+        // Deja vacío [] si quieres permitir a todos, o pon emails: ["tu@email.com"]
+        const AUTHORIZED_EMAILS = [
+            "donraulvp@gmail.com", 
+            "director@colegio.com" 
+        ];
 
         let app, auth, db, userId;
         let qrInterval;
         let generalReportDataForExport = null;
-        let allTeachersList = []; 
+        let allTeachersList = []; // Para el registro manual
         
         document.addEventListener('DOMContentLoaded', () => {
-            if (!firebaseConfig.apiKey || firebaseConfig.apiKey.includes("API_KEY")) {
-                document.getElementById('loading-screen').innerHTML = `<div class="bg-white p-8 rounded-lg shadow-xl text-center"><h2 class="text-2xl font-bold text-red-600">Error de Configuración</h2><p class="mt-4 text-gray-700">Configuración incorrecta.</p></div>`;
+             // Comprobación de seguridad
+             if (!firebaseConfig.apiKey || firebaseConfig.apiKey.includes("API_KEY")) {
+                document.getElementById('loading-screen').innerHTML = `<div class="bg-white p-8 rounded-lg shadow-xl text-center"><h2 class="text-2xl font-bold text-red-600">Error de Configuración</h2><p class="mt-4 text-gray-700">La configuración de Firebase no es correcta.</p></div>`;
                 return;
-            }
+             }
 
             app = initializeApp(firebaseConfig);
             auth = getAuth(app);
             db = getFirestore(app);
 
-            // Manejo global del estado de autenticación
             onAuthStateChanged(auth, async (user) => {
                 const params = new URLSearchParams(window.location.search);
                 const isTeacherLink = params.has('meeting');
@@ -261,6 +310,52 @@
             window.location.reload();
         };
 
+        // --- FUNCIONALIDAD DE RESET (NUEVO) ---
+        window.resetTestData = async () => {
+            if(!confirm("⚠️ ¡ATENCIÓN! ⚠️\n\n¿Estás seguro de que quieres BORRAR TODOS LOS DATOS?\n\nSe eliminarán todas las reuniones, profesores y registros de asistencia. Esta acción no se puede deshacer.")) return;
+            if(!confirm("Confirmación final: ¿Realmente quieres eliminar toda la base de datos de pruebas?")) return;
+
+            const loading = document.getElementById('loading-screen');
+            loading.style.display = 'flex';
+            loading.innerHTML = '<div class="text-white text-center"><div class="lds-dual-ring"></div><p class="mt-4">Borrando datos, por favor espera...</p></div>';
+
+            try {
+                // 1. Borrar Reuniones y sus subcolecciones
+                const meetingsSnap = await getDocs(collection(db, 'meetings'));
+                for(const mDoc of meetingsSnap.docs) {
+                    // Borrar asistentes
+                    const attendeesSnap = await getDocs(collection(db, `meetings/${mDoc.id}/attendees`));
+                    for(const aDoc of attendeesSnap.docs) await deleteDoc(aDoc.ref);
+                    
+                    // Borrar tokens
+                    const tokensSnap = await getDocs(collection(db, `meetings/${mDoc.id}/validTokens`));
+                    for(const tDoc of tokensSnap.docs) await deleteDoc(tDoc.ref);
+
+                    // Borrar reunión
+                    await deleteDoc(mDoc.ref);
+                }
+
+                // 2. Borrar Profesores y sus subcolecciones
+                const teachersSnap = await getDocs(collection(db, 'teachers'));
+                for(const tDoc of teachersSnap.docs) {
+                    // Borrar asistencias del profesor
+                    const attSnap = await getDocs(collection(db, `teachers/${tDoc.id}/attendedMeetings`));
+                    for(const amDoc of attSnap.docs) await deleteDoc(amDoc.ref);
+
+                    // Borrar profesor
+                    await deleteDoc(tDoc.ref);
+                }
+
+                alert("Todos los datos han sido eliminados correctamente.");
+                window.location.reload();
+
+            } catch (error) {
+                console.error("Error al resetear:", error);
+                alert("Hubo un error al intentar borrar los datos. Revisa la consola.");
+                loading.style.display = 'none';
+            }
+        }
+
         function initializeAppState() {
             document.getElementById('loading-screen').style.display = 'none';
             setupUIFromURL();
@@ -308,7 +403,6 @@
             document.getElementById(`tab-${tabId}`).classList.remove('border-transparent', 'text-gray-500', 'hover:text-gray-700', 'hover:border-gray-300');
         }
 
-        // --- LÓGICA PROFESOR Y QR ---
         async function validateTokenAndShowTeacherView(meetingId, tokenId) {
             showView('teacher-view');
             const statusDiv = document.getElementById('teacher-status-message');
@@ -318,7 +412,7 @@
             const tokenSnap = await getDoc(tokenRef);
 
             if (tokenSnap.exists() && tokenSnap.data().expiresAt.toMillis() > Date.now()) {
-                await deleteDoc(tokenRef); // Consumir token
+                await deleteDoc(tokenRef);
                 const meetingRef = doc(db, `meetings/${meetingId}`);
                 const meetingSnap = await getDoc(meetingRef);
                 const meetingName = meetingSnap.exists() ? meetingSnap.data().name : 'Reunión desconocida';
@@ -336,18 +430,19 @@
 
                 if (savedName) {
                     statusDiv.innerHTML = `
-                        <img src="https://web.virgendelpasico.net/wp-content/uploads/2024/01/cropped-ncoop-scaled-1-300x253.jpg" alt="Logo" class="app-logo">
+                        <!-- LOGO DEL CENTRO -->
+                        <img src="https://web.virgendelpasico.net/wp-content/uploads/2024/01/cropped-ncoop-scaled-1-300x253.jpg" alt="Logo Virgen del Pasico" class="app-logo">
                         <p class="text-xl font-semibold mb-4 text-gray-700">Asistencia para: "${meetingName}"</p>
                         <p class="text-2xl text-gray-800 mb-2">¿Eres <strong class="font-bold">${savedName}</strong>?</p>
-                        <button id="confirm-btn" onclick="recordAttendance('${meetingId}', true, this)" class="w-full max-w-md mx-auto bg-green-500 text-white font-bold py-3 px-6 rounded-lg hover:bg-green-600 transition-colors text-lg mb-4">Sí, confirmar asistencia</button>
-                        <br>
-                        <button onclick="showChangeTeacherForm('${meetingId}', '${meetingName}')" class="text-sm text-indigo-600 hover:underline">No soy yo / Cambiar nombre</button>
+                        <p class="text-gray-500 mb-6">Confirma para registrar tu asistencia.</p>
+                        <button id="confirm-btn" onclick="recordAttendance('${meetingId}', true, this)" class="w-full max-w-md mx-auto bg-green-500 text-white font-bold py-3 px-6 rounded-lg hover:bg-green-600 transition-colors text-lg">Sí, confirmar asistencia</button>
+                        <button onclick="showChangeTeacherForm('${meetingId}', '${meetingName}')" class="mt-4 text-sm text-indigo-600 hover:underline">No soy yo / Cambiar nombre</button>
                     `;
                 } else {
                     showChangeTeacherForm(meetingId, meetingName, teachersDatalist);
                 }
             } else {
-                statusDiv.innerHTML = '<p class="text-red-500 font-bold text-xl">Código QR caducado o inválido.</p><p class="mt-2">Por favor, escanea el código que se muestra actualmente en la pantalla.</p>';
+                statusDiv.innerHTML = '<p class="text-red-500 font-bold text-xl">Código QR caducado o inválido. Por favor, escanea el código actual en la pantalla.</p>';
             }
         }
 
@@ -362,7 +457,8 @@
              }
 
              document.getElementById('teacher-status-message').innerHTML = `
-                <img src="https://web.virgendelpasico.net/wp-content/uploads/2024/01/cropped-ncoop-scaled-1-300x253.jpg" alt="Logo" class="app-logo">
+                <!-- LOGO DEL CENTRO -->
+                <img src="https://web.virgendelpasico.net/wp-content/uploads/2024/01/cropped-ncoop-scaled-1-300x253.jpg" alt="Logo Virgen del Pasico" class="app-logo">
                 <p class="text-xl font-semibold mb-4 text-gray-700">Asistencia para: "${meetingName}"</p>
                 <p class="text-gray-600 mb-6">Introduce tu nombre completo:</p>
                 <input type="text" id="teacher-name-input" list="teacher-suggestions" placeholder="Empieza a escribir tu nombre..." class="w-full max-w-md mx-auto p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none mb-6">
@@ -456,7 +552,9 @@
             document.getElementById('modal-title').textContent = `QR para: ${meetingName}`;
             const modalBody = document.getElementById('modal-body');
             modalBody.innerHTML = `
-                <img src="https://web.virgendelpasico.net/wp-content/uploads/2024/01/cropped-ncoop-scaled-1-300x253.jpg" alt="Logo" class="app-logo">
+                <!-- LOGO DEL CENTRO -->
+                <img src="https://web.virgendelpasico.net/wp-content/uploads/2024/01/cropped-ncoop-scaled-1-300x253.jpg" alt="Logo Virgen del Pasico" class="app-logo">
+
                 <p class="text-center text-gray-600 mb-4">Escanea para firmar. Se actualiza cada ${QR_LIFESPAN_MS / 1000}s.</p>
                 <div id="qrcode-container" class="flex justify-center p-4 bg-white border rounded-lg relative">
                     <div id="qrcode"></div>
