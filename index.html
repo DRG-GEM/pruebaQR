@@ -58,11 +58,20 @@
 
         <!-- Vista del Administrador -->
         <div id="admin-view" class="hidden">
-            <div class="flex justify-between items-center mb-6">
+            <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
                 <h1 class="text-2xl font-bold text-indigo-600">Panel de Dirección</h1>
-                <div class="flex items-center gap-4">
-                    <span id="admin-email-display" class="text-sm text-gray-500 hidden md:inline"></span>
-                    <button onclick="logout()" class="text-gray-500 hover:text-red-600 text-sm font-medium flex items-center gap-1">
+                <div class="flex flex-wrap items-center gap-2 md:gap-4 justify-center">
+                    <span id="admin-email-display" class="text-sm text-gray-500 hidden lg:inline"></span>
+                    
+                    <!-- Botón Gestión Claustro -->
+                    <button onclick="openTeacherManagement()" class="flex items-center gap-2 bg-indigo-50 text-indigo-700 px-3 py-2 rounded-lg border border-indigo-200 hover:bg-indigo-100 text-sm font-semibold transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                        </svg>
+                        Gestionar Claustro
+                    </button>
+
+                    <button onclick="logout()" class="text-gray-500 hover:text-red-600 text-sm font-medium flex items-center gap-1 border border-gray-200 px-3 py-2 rounded-lg hover:bg-gray-50">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                           <path fill-rule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 102 0V4a1 1 0 00-1-1zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z" clip-rule="evenodd" />
                         </svg>
@@ -77,18 +86,6 @@
                 <div class="flex gap-4">
                     <input type="text" id="meeting-name" placeholder="Nombre de la reunión (Ej: Claustro Final Curso)" class="flex-grow p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none">
                     <button onclick="createMeeting()" class="bg-indigo-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-indigo-700 transition-colors">Crear</button>
-                </div>
-            </div>
-
-            <!-- Gestión de Claustro (NUEVO) -->
-            <div class="bg-white p-6 rounded-2xl shadow-lg mt-6 border-l-4 border-green-500">
-                <h2 class="text-xl font-semibold mb-4 text-gray-800">Gestión del Claustro</h2>
-                <p class="text-sm text-gray-600 mb-2">Pega aquí la lista de profesores (uno por línea) para precargarla. Esto ayudará a que el nombre salga sugerido al registrarse.</p>
-                <div class="flex flex-col gap-2">
-                    <textarea id="bulk-teachers" rows="3" placeholder="Ejemplo:
-Juan Pérez García
-María López Martínez..." class="p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none w-full text-sm"></textarea>
-                    <button onclick="importTeachers(this)" class="bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700 transition-colors self-end text-sm">Importar Lista</button>
                 </div>
             </div>
             
@@ -516,6 +513,21 @@ María López Martínez..." class="p-3 border border-gray-300 rounded-lg focus:r
             try { await deleteDoc(doc(db, `meetings/${meetingId}`)); } catch (error) { alert("Error al borrar"); }
         }
 
+        // Nueva función para abrir el modal de gestión de profesores
+        window.openTeacherManagement = () => {
+            document.getElementById('modal-title').textContent = "Gestión del Claustro";
+            document.getElementById('modal-body').innerHTML = `
+                <div class="p-1">
+                    <p class="text-sm text-gray-600 mb-4">Pega aquí la lista de profesores (uno por línea) para precargarla en el sistema. Esto ayudará a que el nombre salga sugerido al registrarse.</p>
+                    <div class="flex flex-col gap-2">
+                        <textarea id="bulk-teachers" rows="10" placeholder="Ejemplo:\nJuan Pérez García\nMaría López Martínez..." class="p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none w-full text-sm"></textarea>
+                        <button onclick="importTeachers(this)" class="bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700 transition-colors self-end text-sm">Importar Lista</button>
+                    </div>
+                </div>
+            `;
+            openModal();
+        };
+
         function listenForMeetings() {
             onSnapshot(query(collection(db, `meetings`)), (snapshot) => {
                 const list = document.getElementById('meetings-list');
@@ -565,6 +577,7 @@ María López Martínez..." class="p-3 border border-gray-300 rounded-lg focus:r
                 }
                 alert(`Importación completada. ${added} profesores nuevos añadidos.`);
                 textarea.value = "";
+                closeModal(); // Cerrar modal tras importar
             } catch(e) {
                 console.error(e);
                 alert("Error durante la importación.");
