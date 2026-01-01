@@ -556,6 +556,12 @@
             modalBody.innerHTML = `
                 <img src="https://web.virgendelpasico.net/wp-content/uploads/2024/01/cropped-ncoop-scaled-1-300x253.jpg" alt="Logo" class="app-logo">
                 <p class="text-center text-gray-600 mb-4">Escanea para firmar. Se actualiza cada ${QR_LIFESPAN_MS / 1000}s.</p>
+                <div class="flex justify-center gap-2 mb-4">
+                    <button onclick="copyInviteLink('${meetingId}')" class="bg-blue-100 text-blue-700 text-xs font-bold py-1 px-3 rounded hover:bg-blue-200 flex items-center gap-1 transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
+                        Copiar Enlace (Validez 24h)
+                    </button>
+                </div>
                 <div id="qrcode-container" class="flex justify-center p-4 bg-white border rounded-lg relative">
                     <div id="qrcode"></div>
                     <p id="qr-expired-text" class="absolute inset-0 flex items-center justify-center bg-white bg-opacity-90 text-red-500 font-bold hidden">CADUCADO</p>
@@ -589,6 +595,23 @@
             };
             generateAndDisplayDynamicQR();
             qrInterval = setInterval(generateAndDisplayDynamicQR, QR_LIFESPAN_MS);
+        };
+
+        window.copyInviteLink = async (meetingId) => {
+            const tokenId = crypto.randomUUID();
+            // Token válido por 24 horas (24 * 60 * 60 * 1000 ms)
+            const expiresAt = Timestamp.fromMillis(Date.now() + 86400000);
+            
+            try {
+                await setDoc(doc(db, `meetings/${meetingId}/validTokens`, tokenId), { expiresAt });
+                const url = `${window.location.href.split('?')[0]}?meeting=${meetingId}&token=${tokenId}`;
+                
+                await navigator.clipboard.writeText(url);
+                showToast("Enlace de invitación copiado (Válido 24h)", "success");
+            } catch(e) {
+                console.error("Error generating link", e);
+                showToast("Error al generar el enlace", "error");
+            }
         };
 
         window.closeModal = () => {
