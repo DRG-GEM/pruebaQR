@@ -234,6 +234,7 @@
         let qrInterval;
         let generalReportDataForExport = null;
         let allTeachersList = []; // Para el registro manual
+        let currentMeetingDataForPrint = null; // Para imprimir
         
         document.addEventListener('DOMContentLoaded', () => {
              // Comprobación de seguridad
@@ -726,19 +727,110 @@
             const link = document.createElement("a"); link.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv); link.download = `informe_profesores.csv`; link.click();
         };
 
+        // -------------------------
+        // NUEVA FUNCIÓN DE IMPRESIÓN
+        // -------------------------
+        window.printAttendanceList = () => {
+            if (!currentMeetingDataForPrint) return;
+            const { name, attendees } = currentMeetingDataForPrint;
+            
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(`
+                <html>
+                <head>
+                    <title>Asistencia - ${name}</title>
+                    <style>
+                        body { font-family: 'Inter', sans-serif; padding: 40px; color: #333; }
+                        h1 { text-align: center; color: #333; font-size: 24px; margin-bottom: 5px; }
+                        .subtitle { text-align: center; color: #666; font-size: 14px; margin-bottom: 30px; }
+                        table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 14px; }
+                        th, td { border-bottom: 1px solid #ddd; padding: 12px 8px; text-align: left; }
+                        th { background-color: #f9fafb; font-weight: bold; text-transform: uppercase; font-size: 12px; color: #6b7280; }
+                        tr:nth-child(even) { background-color: #f9fafb; }
+                        .footer { margin-top: 30px; border-top: 2px solid #333; padding-top: 10px; display: flex; justify-content: space-between; font-weight: bold; }
+                        .logo { display: block; margin: 0 auto 20px; height: 80px; width: auto; }
+                        @media print {
+                            body { -webkit-print-color-adjust: exact; }
+                        }
+                    </style>
+                </head>
+                <body>
+                    <img src="https://web.virgendelpasico.net/wp-content/uploads/2024/01/cropped-ncoop-scaled-1-300x253.jpg" class="logo" alt="Logo">
+                    <h1>Lista de Asistencia</h1>
+                    <div class="subtitle">Evento: <strong>${name}</strong> &bull; Fecha de impresión: ${new Date().toLocaleDateString()}</div>
+                    
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Nombre del Profesor</th>
+                                <th style="text-align:right">Hora de Registro</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${attendees.map((a, index) => `
+                                <tr>
+                                    <td style="width: 30px; color: #999;">${index + 1}</td>
+                                    <td>${a.name}</td>
+                                    <td style="text-align:right">${a.timestamp ? new Date(a.timestamp.seconds * 1000).toLocaleTimeString('es-ES') : '--:--'}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                    
+                    <div class="footer">
+                        <span>Firma / Sello del Centro:</span>
+                        <span>Total Asistentes: ${attendees.length}</span>
+                    </div>
+                    
+                    <script>
+                        window.onload = function() { 
+                            window.print(); 
+                            // window.close(); // Opcional: cerrar tras imprimir
+                        }
+                    </script>
+                </body>
+                </html>
+            `);
+            printWindow.document.close();
+        };
+
         window.viewAttendance = (mId, mName) => {
             document.getElementById('modal-title').textContent = mName;
+            
+            // Se inyecta botón de Imprimir en la cabecera
             document.getElementById('modal-body').innerHTML = `
+                <div class="flex justify-end mb-4">
+                     <button onclick="printAttendanceList()" id="btn-print-list" disabled class="flex items-center gap-2 text-sm bg-white text-gray-700 hover:text-gray-900 border border-gray-300 hover:bg-gray-50 py-2 px-4 rounded-lg shadow-sm transition-colors opacity-50 cursor-not-allowed">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                        </svg>
+                        Imprimir Lista
+                     </button>
+                </div>
+                
                 <div class="bg-indigo-50 p-3 rounded mb-4 text-sm">
                     <div class="flex gap-2"><select id="manual-teacher-select" class="flex-grow border rounded p-1"><option value="">-- Añadir manual --</option>${allTeachersList.map(t=>`<option value="${t.name}">${t.name}</option>`).join('')}</select></div>
                     <div class="flex gap-2 mt-2"><input id="manual-teacher-name" placeholder="O nuevo nombre..." class="flex-grow border rounded p-1"><button onclick="manualRecordAttendance('${mId}')" class="bg-indigo-600 text-white px-3 rounded">Añadir</button></div>
                 </div>
                 <div id="attendance-list-container">Cargando...</div>`;
             openModal();
+            
             onSnapshot(query(collection(db, `meetings/${mId}/attendees`)), (snap) => {
                 const list = document.getElementById('attendance-list-container');
                 if(!list) return;
                 const data = snap.docs.map(d => d.data()).sort((a,b) => a.timestamp - b.timestamp);
+                
+                // GUARDAR DATOS GLOBALES PARA IMPRIMIR
+                currentMeetingDataForPrint = { name: mName, attendees: data };
+                
+                // Activar botón de imprimir
+                const btnPrint = document.getElementById('btn-print-list');
+                if(btnPrint) {
+                    btnPrint.disabled = false;
+                    btnPrint.classList.remove('opacity-50', 'cursor-not-allowed');
+                }
+
                 list.innerHTML = `<p class="mb-2 font-bold">Total: ${data.length}</p><ul class="max-h-60 overflow-y-auto">${data.map(a => `<li class="flex justify-between border-b py-2"><span>${a.name}</span><span class="text-xs text-gray-400">${a.timestamp?.toDate().toLocaleTimeString()||''}</span></li>`).join('')}</ul>`;
             });
         }
@@ -821,3 +913,5 @@
     </script>
 </body>
 </html>
+```
+```eof
