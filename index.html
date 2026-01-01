@@ -185,6 +185,7 @@
         let app, auth, db, userId;
         let qrInterval;
         let generalReportDataForExport = null;
+        let allTeachersList = []; // Para el registro manual
         
         document.addEventListener('DOMContentLoaded', () => {
              if (!firebaseConfig.apiKey || firebaseConfig.apiKey === "TU_API_KEY") {
@@ -354,7 +355,9 @@
             document.getElementById('modal-title').textContent = `QR para: ${meetingName}`;
             const modalBody = document.getElementById('modal-body');
             modalBody.innerHTML = `
+                <!-- INSERTA AQUÍ LA URL DE TU LOGO -->
                 <img src="https://placehold.co/150x50/ffffff/4f46e5?text=Tu+Logo+Aquí" alt="Logo del Colegio" class="mx-auto h-12 mb-4" onerror="this.style.display='none'">
+
                 <p class="text-center text-gray-600 mb-4">Escanea este código. Se actualiza automáticamente cada ${QR_LIFESPAN_MS / 1000} segundos.</p>
                 <div id="qrcode-container" class="flex justify-center p-4 bg-white border rounded-lg relative">
                     <div id="qrcode"></div>
@@ -411,6 +414,19 @@
                 meetingNameInput.value = '';
             } catch (error) { console.error("Error creating meeting: ", error); }
         };
+        
+        window.deleteMeeting = async (meetingId) => {
+            if(!confirm("¿Estás seguro de que quieres eliminar esta sesión y todos sus registros de asistencia?")) return;
+            try {
+                await deleteDoc(doc(db, `meetings/${meetingId}`));
+                // Nota: Esto no borra las subcolecciones de asistentes por limitaciones de Firebase cliente,
+                // pero al borrar la reunión ya no aparecerá en listas.
+            } catch (error) {
+                console.error("Error deleting meeting", error);
+                alert("Error al borrar la reunión");
+            }
+        }
+
         function listenForMeetings() {
             const meetingsList = document.getElementById('meetings-list');
             if (!meetingsList) return;
@@ -420,9 +436,14 @@
                 meetingsList.innerHTML = meetingsData.map(m => `
                     <div class="flex flex-col md:flex-row justify-between items-start md:items-center p-4 border rounded-lg">
                         <div><p class="font-semibold">${m.name}</p><p class="text-sm text-gray-500">${m.createdAt ? new Date(m.createdAt.toDate()).toLocaleString('es-ES') : ''}</p></div>
-                        <div class="flex gap-2 mt-2 md:mt-0">
+                        <div class="flex gap-2 mt-2 md:mt-0 items-center">
                             <button onclick="showQrCode('${m.id}', '${m.name}')" class="bg-gray-200 text-sm font-bold py-2 px-4 rounded-lg hover:bg-gray-300">Mostrar QR</button>
                             <button onclick="viewAttendance('${m.id}', '${m.name}')" class="bg-blue-500 text-white text-sm font-bold py-2 px-4 rounded-lg hover:bg-blue-600">Ver Asistentes</button>
+                            <button onclick="deleteMeeting('${m.id}')" class="text-red-500 hover:text-red-700 ml-2" title="Borrar sesión">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                            </button>
                         </div>
                     </div>`).join('');
             });
@@ -433,6 +454,7 @@
             onSnapshot(query(collection(db, `teachers`)), (snapshot) => {
                 const teachers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 teachers.sort((a, b) => a.name.localeCompare(b.name));
+                allTeachersList = teachers; // Guardar para uso en modal manual
                 select.innerHTML = teachers.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
             });
         }
@@ -522,7 +544,26 @@
 
         window.viewAttendance = (meetingId, meetingName) => {
              document.getElementById('modal-title').textContent = `Asistencia para: ${meetingName}`;
-            document.getElementById('modal-body').innerHTML = `<div id="attendance-list-container"><p>Cargando...</p></div>`;
+             
+             // Inyectar HTML para añadir manualmente
+             const manualAddHtml = `
+                <div class="bg-gray-100 p-3 rounded-lg mb-4">
+                    <p class="text-sm font-semibold mb-2">Registro Manual (Admin):</p>
+                    <div class="flex gap-2">
+                        <select id="manual-teacher-select" class="flex-grow p-2 border rounded text-sm">
+                            <option value="">Seleccionar profesor existente...</option>
+                            ${allTeachersList.map(t => `<option value="${t.name}">${t.name}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div class="flex gap-2 mt-2">
+                         <input type="text" id="manual-teacher-name" placeholder="O escribe nombre nuevo..." class="flex-grow p-2 border rounded text-sm">
+                         <button onclick="manualRecordAttendance('${meetingId}')" class="bg-indigo-600 text-white text-xs font-bold py-2 px-3 rounded hover:bg-indigo-700">Añadir</button>
+                    </div>
+                </div>
+                <div id="attendance-list-container"><p>Cargando...</p></div>
+             `;
+             
+            document.getElementById('modal-body').innerHTML = manualAddHtml;
             openModal();
 
             const attendeesQuery = query(collection(db, `meetings/${meetingId}/attendees`));
@@ -544,6 +585,49 @@
                         </li>`).join('')}
                     </ul>`;
             });
+        };
+        
+        window.manualRecordAttendance = async (meetingId) => {
+            const select = document.getElementById('manual-teacher-select');
+            const input = document.getElementById('manual-teacher-name');
+            let name = select.value || input.value.trim();
+            
+            if (!name) {
+                alert("Por favor, selecciona un profesor o escribe un nombre.");
+                return;
+            }
+            
+            // Reutilizamos la lógica de recordAttendance pero adaptada para admin (sin localStorage del admin)
+            // Buscar si existe el profesor
+            let teacherId;
+            const teachersCol = collection(db, `teachers`);
+            const q = query(teachersCol, where("name", "==", name));
+            const querySnapshot = await getDocs(q);
+            if (querySnapshot.empty) {
+                const newTeacherRef = await addDoc(teachersCol, { name: name });
+                teacherId = newTeacherRef.id;
+            } else {
+                teacherId = querySnapshot.docs[0].id;
+            }
+            
+            const meetingRef = doc(db, `meetings/${meetingId}`);
+            const meetingSnap = await getDoc(meetingRef);
+            if (!meetingSnap.exists()) return;
+            const meetingData = meetingSnap.data();
+
+            try {
+                const attendeesCol = collection(db, `meetings/${meetingId}/attendees`);
+                await addDoc(attendeesCol, { name, teacherId, timestamp: serverTimestamp() });
+                const attendedMeetingsRef = doc(db, `teachers/${teacherId}/attendedMeetings/${meetingId}`);
+                await setDoc(attendedMeetingsRef, { meetingName: meetingData.name, meetingDate: meetingData.createdAt });
+                
+                alert(`Asistencia registrada para: ${name}`);
+                select.value = "";
+                input.value = "";
+            } catch (error) {
+                console.error("Error manual add", error);
+                alert("Error al registrar asistencia manual.");
+            }
         };
         
         // --- NUEVAS FUNCIONES PARA INFORME GENERAL ---
