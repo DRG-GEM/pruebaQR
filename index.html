@@ -10,19 +10,13 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     
     <style>
-        /* ESTILOS CRÍTICOS: Garantizan que la app se vea bien aunque falle Tailwind */
+        /* ESTILOS CRÍTICOS */
         body { font-family: 'Inter', sans-serif; }
-        
-        /* Esta regla es vital: asegura que lo que debe estar oculto, se quede oculto */
         .hidden { display: none !important; }
-        
-        /* Asegura que el logo nunca sea gigante */
         .app-logo { max-height: 100px; width: auto; margin: 0 auto 1.5rem auto; }
-        
         .modal { transition: opacity 0.25s ease; }
         body.modal-active { overflow: hidden; }
         
-        /* Spinner de carga */
         .lds-dual-ring { display: inline-block; width: 80px; height: 80px; }
         .lds-dual-ring:after {
             content: " "; display: block; width: 64px; height: 64px; margin: 8px;
@@ -31,17 +25,8 @@
             animation: lds-dual-ring 1.2s linear infinite;
         }
         @keyframes lds-dual-ring { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        
-        #qr-timer-bar {
-            height: 4px;
-            background-color: #4f46e5;
-            width: 100%;
-        }
-        
-        button:disabled {
-            opacity: 0.7;
-            cursor: not-allowed;
-        }
+        #qr-timer-bar { height: 4px; background-color: #4f46e5; width: 100%; }
+        button:disabled { opacity: 0.7; cursor: not-allowed; }
     </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
@@ -52,23 +37,21 @@
              <div class="lds-dual-ring"></div>
         </div>
 
-        <!-- Vista de Acceso Dirección (Antes Selección de Rol) -->
+        <!-- Vista de Acceso Dirección (Login Google) -->
         <div id="role-selection-view" class="hidden">
             <div class="bg-white p-8 rounded-2xl shadow-lg text-center max-w-lg mx-auto mt-10">
-                <!-- LOGO DEL CENTRO -->
                 <img src="https://web.virgendelpasico.net/wp-content/uploads/2024/01/cropped-ncoop-scaled-1-300x253.jpg" alt="Logo Virgen del Pasico" class="app-logo">
                 
                 <h1 class="text-3xl font-bold text-gray-800 mb-2">Control de Asistencia</h1>
                 <p class="text-gray-500 mb-8">Acceso exclusivo para el equipo directivo</p>
                 
                 <div class="flex flex-col gap-4 justify-center">
-                    <button onclick="showView('admin-view')" class="w-full bg-indigo-600 text-white font-bold py-4 px-6 rounded-xl hover:bg-indigo-700 transition-colors shadow-md flex items-center justify-center gap-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                        </svg>
-                        Entrar al Panel de Dirección
+                    <button onclick="loginWithGoogle()" class="w-full bg-white text-gray-700 font-bold py-4 px-6 rounded-xl hover:bg-gray-50 transition-colors shadow-md border border-gray-300 flex items-center justify-center gap-3">
+                        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-6 h-6" alt="Google logo">
+                        Iniciar Sesión con Google
                     </button>
                 </div>
+                <div id="login-error" class="text-red-500 mt-4 text-sm hidden"></div>
                 <p class="mt-8 text-xs text-gray-400">Los profesores deben acceder escaneando el código QR de la reunión.</p>
             </div>
         </div>
@@ -77,7 +60,15 @@
         <div id="admin-view" class="hidden">
             <div class="flex justify-between items-center mb-6">
                 <h1 class="text-2xl font-bold text-indigo-600">Panel de Dirección</h1>
-                 <button onclick="showView('role-selection-view')" class="text-gray-500 hover:text-indigo-600 text-sm font-medium">&larr; Salir</button>
+                <div class="flex items-center gap-4">
+                    <span id="admin-email-display" class="text-sm text-gray-500 hidden md:inline"></span>
+                    <button onclick="logout()" class="text-gray-500 hover:text-red-600 text-sm font-medium flex items-center gap-1">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                          <path fill-rule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 102 0V4a1 1 0 00-1-1zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z" clip-rule="evenodd" />
+                        </svg>
+                        Salir
+                    </button>
+                </div>
             </div>
             
             <!-- Crear Sesión -->
@@ -98,20 +89,14 @@
             <!-- Informes -->
             <div class="bg-white p-6 rounded-2xl shadow-lg mt-6">
                 <h2 class="text-xl font-semibold mb-4 text-gray-800">Informes de Asistencia</h2>
-                
-                <!-- Pestañas -->
                 <div class="border-b border-gray-200">
                     <nav class="-mb-px flex space-x-8" aria-label="Tabs">
-                        <button onclick="showTab('individual-report')" id="tab-individual-report" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-indigo-500 text-indigo-600">
-                            Informe por Profesor(es)
-                        </button>
-                        <button onclick="showTab('general-report')" id="tab-general-report" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">
-                            Informe General
-                        </button>
+                        <button onclick="showTab('individual-report')" id="tab-individual-report" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-indigo-500 text-indigo-600">Informe por Profesor(es)</button>
+                        <button onclick="showTab('general-report')" id="tab-general-report" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">Informe General</button>
                     </nav>
                 </div>
 
-                <!-- Contenido de Pestañas -->
+                <!-- Contenido Informes -->
                 <div id="individual-report-content" class="mt-6">
                     <h3 class="text-lg font-medium text-gray-800 mb-4">Consulta por Profesor(es)</h3>
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
@@ -119,19 +104,13 @@
                             <label for="teacher-select" class="block text-sm font-medium text-gray-700">Profesor(es)</label>
                             <select id="teacher-select" multiple class="mt-1 block w-full p-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 h-32"></select>
                             <div class="flex justify-between mt-1">
-                                <span class="text-xs text-gray-500">Mantén Ctrl/Cmd para seleccionar varios.</span>
-                                <button onclick="selectAllTeachers(true)" class="text-xs text-indigo-600 hover:underline">Seleccionar todos</button>
+                                <span class="text-xs text-gray-500">Mantén Ctrl/Cmd para varios.</span>
+                                <button onclick="selectAllTeachers(true)" class="text-xs text-indigo-600 hover:underline">Todos</button>
                             </div>
                         </div>
                         <div class="md:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-4">
-                             <div>
-                                <label for="start-date" class="block text-sm font-medium text-gray-700">Desde</label>
-                                <input type="date" id="start-date" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm">
-                             </div>
-                             <div>
-                                <label for="end-date" class="block text-sm font-medium text-gray-700">Hasta</label>
-                                <input type="date" id="end-date" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm">
-                             </div>
+                             <div><label class="block text-sm font-medium text-gray-700">Desde</label><input type="date" id="start-date" class="mt-1 block w-full p-2 border border-gray-300 rounded-md"></div>
+                             <div><label class="block text-sm font-medium text-gray-700">Hasta</label><input type="date" id="end-date" class="mt-1 block w-full p-2 border border-gray-300 rounded-md"></div>
                              <button onclick="getTeacherAttendance()" class="bg-blue-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-600 self-end">Consultar</button>
                         </div>
                     </div>
@@ -141,14 +120,8 @@
                 <div id="general-report-content" class="hidden mt-6">
                     <h3 class="text-lg font-medium text-gray-800 mb-4">Resumen General por Fechas</h3>
                      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-                         <div>
-                            <label for="general-start-date" class="block text-sm font-medium text-gray-700">Desde</label>
-                            <input type="date" id="general-start-date" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm">
-                         </div>
-                         <div>
-                            <label for="general-end-date" class="block text-sm font-medium text-gray-700">Hasta</label>
-                            <input type="date" id="general-end-date" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm">
-                         </div>
+                         <div><label class="block text-sm font-medium text-gray-700">Desde</label><input type="date" id="general-start-date" class="mt-1 block w-full p-2 border border-gray-300 rounded-md"></div>
+                         <div><label class="block text-sm font-medium text-gray-700">Hasta</label><input type="date" id="general-end-date" class="mt-1 block w-full p-2 border border-gray-300 rounded-md"></div>
                          <button onclick="getGeneralAttendance()" class="bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700 self-end">Generar Informe</button>
                     </div>
                     <div id="general-attendance-results" class="mt-6"></div>
@@ -158,23 +131,18 @@
 
         <!-- Vista del Profesor -->
         <div id="teacher-view" class="hidden">
-            <div class="flex justify-between items-center mb-6">
-                <!-- Se ha eliminado el botón de volver para el profesor, ya no es necesario -->
-            </div>
             <div id="teacher-status-message" class="bg-white p-8 rounded-2xl shadow-lg text-center mt-10"></div>
         </div>
     </div>
 
-    <!-- Modal para QR y Lista de Asistencia -->
+    <!-- Modal -->
     <div id="modal" class="modal fixed w-full h-full top-0 left-0 flex items-center justify-center hidden">
         <div class="modal-overlay absolute w-full h-full bg-gray-900 opacity-50" onclick="closeModal()"></div>
         <div class="modal-container bg-white w-11/12 md:max-w-2xl mx-auto rounded-2xl shadow-lg z-50 overflow-y-auto">
             <div class="modal-content py-4 text-left px-6">
                 <div class="flex justify-between items-center pb-3">
                     <p id="modal-title" class="text-2xl font-bold"></p>
-                    <div class="modal-close cursor-pointer z-50" onclick="closeModal()">
-                        <svg class="fill-current text-black" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 18 18"><path d="M14.53 4.53l-1.06-1.06L9 7.94 4.53 3.47 3.47 4.53 7.94 9l-4.47 4.47 1.06 1.06L9 10.06l4.47 4.47 1.06-1.06L10.06 9z"></path></svg>
-                    </div>
+                    <div class="modal-close cursor-pointer z-50" onclick="closeModal()"><svg class="fill-current text-black" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 18 18"><path d="M14.53 4.53l-1.06-1.06L9 7.94 4.53 3.47 3.47 4.53 7.94 9l-4.47 4.47 1.06 1.06L9 10.06l4.47 4.47 1.06-1.06L10.06 9z"></path></svg></div>
                 </div>
                 <div id="modal-body" class="my-5"></div>
             </div>
@@ -183,11 +151,17 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, addDoc, setDoc, getDoc, deleteDoc, getDocs, collection, onSnapshot, query, where, serverTimestamp, Timestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // *******************************************************************
-        // CONFIGURACIÓN DE FIREBASE
+        // --- CONFIGURACIÓN ---
+        // Pon aquí los correos que tendrán acceso al panel de administración.
+        // Si dejas el array vacío [], CUALQUIERA con cuenta de Google podrá entrar (no recomendado).
+        const AUTHORIZED_EMAILS = [
+            "tu-email@gmail.com", 
+            "director@colegio.com" 
+        ];
+
         const firebaseConfig = {
           apiKey: "AIzaSyCu7P0nV5vSeqvwLtfUpHIpnAgGu9Dx3mY",
           authDomain: "control-asistencia-pruebas.firebaseapp.com",
@@ -197,39 +171,87 @@
           appId: "1:429481399686:web:955659d3e70826b22a0807",
           measurementId: "G-104TMJF8R4"
         };
-        // *******************************************************************
 
         let app, auth, db, userId;
         let qrInterval;
         let generalReportDataForExport = null;
-        let allTeachersList = []; // Para el registro manual
+        let allTeachersList = []; 
         
         document.addEventListener('DOMContentLoaded', () => {
-             // Comprobación de seguridad
-             if (!firebaseConfig.apiKey || firebaseConfig.apiKey.includes("API_KEY")) {
-                document.getElementById('loading-screen').innerHTML = `<div class="bg-white p-8 rounded-lg shadow-xl text-center"><h2 class="text-2xl font-bold text-red-600">Error de Configuración</h2><p class="mt-4 text-gray-700">La configuración de Firebase no es correcta.</p></div>`;
+            if (!firebaseConfig.apiKey || firebaseConfig.apiKey.includes("API_KEY")) {
+                document.getElementById('loading-screen').innerHTML = `<div class="bg-white p-8 rounded-lg shadow-xl text-center"><h2 class="text-2xl font-bold text-red-600">Error de Configuración</h2><p class="mt-4 text-gray-700">Configuración incorrecta.</p></div>`;
                 return;
-             }
+            }
 
             app = initializeApp(firebaseConfig);
             auth = getAuth(app);
             db = getFirestore(app);
 
+            // Manejo global del estado de autenticación
             onAuthStateChanged(auth, async (user) => {
+                const params = new URLSearchParams(window.location.search);
+                const isTeacherLink = params.has('meeting');
+
                 if (user) {
                     userId = user.uid;
-                    initializeAppState();
+                    // Si es un usuario anónimo (profesor) o un usuario de Google (admin)
+                    if (user.isAnonymous) {
+                        initializeAppState(); // Flujo profesor/anónimo
+                    } else {
+                        // Flujo Administrador (Google)
+                        // Verificación de email autorizado
+                        if (AUTHORIZED_EMAILS.length > 0 && !AUTHORIZED_EMAILS.includes(user.email)) {
+                            await signOut(auth);
+                            alert("Acceso denegado: Tu correo (" + user.email + ") no está autorizado para acceder al panel de dirección.");
+                            showView('role-selection-view');
+                            document.getElementById('loading-screen').style.display = 'none';
+                            return;
+                        }
+                        
+                        document.getElementById('admin-email-display').textContent = user.email;
+                        initializeAppState(); // Flujo admin autorizado
+                    }
                 } else {
-                     try {
-                        await signInAnonymously(auth);
-                     } catch (error) {
-                        console.error("Auth Error:", error);
-                        document.getElementById('loading-screen').innerHTML = `<div class="text-white text-center">Error de conexión con Firebase. Revisa las reglas de tu base de datos.</div>`;
+                    // No logueado
+                    if (isTeacherLink) {
+                        // Si es enlace de profesor, logueamos anónimamente automático
+                        try {
+                            await signInAnonymously(auth);
+                        } catch (error) {
+                            console.error("Auth Error:", error);
+                            document.getElementById('loading-screen').innerHTML = `Error de conexión.`;
+                        }
+                    } else {
+                        // Si es la home, esperamos a que pulse el botón de Google
+                        document.getElementById('loading-screen').style.display = 'none';
+                        showView('role-selection-view');
                     }
                 }
             });
         });
         
+        // --- AUTENTICACIÓN ADMIN ---
+        window.loginWithGoogle = async () => {
+            const provider = new GoogleAuthProvider();
+            try {
+                await signInWithPopup(auth, provider);
+            } catch (error) {
+                console.error("Login failed", error);
+                const errorDiv = document.getElementById('login-error');
+                errorDiv.textContent = "Error al iniciar sesión: " + error.message;
+                errorDiv.classList.remove('hidden');
+                // IMPORTANTE: Avisar si el dominio no está autorizado
+                if (error.code === 'auth/unauthorized-domain') {
+                    alert("Este dominio no está autorizado en Firebase. Añádelo en la consola de Firebase > Authentication > Settings.");
+                }
+            }
+        };
+
+        window.logout = async () => {
+            await signOut(auth);
+            window.location.reload();
+        };
+
         function initializeAppState() {
             document.getElementById('loading-screen').style.display = 'none';
             setupUIFromURL();
@@ -241,17 +263,27 @@
                 // Flujo de profesor (QR escaneado)
                 validateTokenAndShowTeacherView(params.get('meeting'), params.get('token'));
             } else {
-                // Flujo de administración (Acceso directo)
-                showView('role-selection-view');
-                listenForMeetings();
-                listenForTeachers();
+                // Flujo de administración
+                // Si llegamos aquí y estamos logueados (y no es anónimo), mostramos admin
+                if (auth.currentUser && !auth.currentUser.isAnonymous) {
+                    showView('admin-view');
+                    listenForMeetings();
+                    listenForTeachers();
+                } else {
+                    // Si estamos logueados como anónimo pero sin parámetros de reunión, 
+                    // probablemente es un residuo, hacemos logout o mostramos home
+                    if (auth.currentUser?.isAnonymous) {
+                        // Opcional: signOut(auth);
+                        showView('role-selection-view');
+                    } else {
+                        showView('role-selection-view');
+                    }
+                }
             }
         }
         
         window.showView = (viewId) => {
-            ['role-selection-view', 'admin-view', 'teacher-view'].forEach(id => {
-                document.getElementById(id).classList.add('hidden');
-            });
+            ['role-selection-view', 'admin-view', 'teacher-view'].forEach(id => document.getElementById(id).classList.add('hidden'));
             document.getElementById(viewId).classList.remove('hidden');
         };
 
@@ -267,6 +299,7 @@
             document.getElementById(`tab-${tabId}`).classList.remove('border-transparent', 'text-gray-500', 'hover:text-gray-700', 'hover:border-gray-300');
         }
 
+        // --- LÓGICA PROFESOR Y QR ---
         async function validateTokenAndShowTeacherView(meetingId, tokenId) {
             showView('teacher-view');
             const statusDiv = document.getElementById('teacher-status-message');
@@ -276,40 +309,39 @@
             const tokenSnap = await getDoc(tokenRef);
 
             if (tokenSnap.exists() && tokenSnap.data().expiresAt.toMillis() > Date.now()) {
-                await deleteDoc(tokenRef);
+                await deleteDoc(tokenRef); // Consumir token
                 const meetingRef = doc(db, `meetings/${meetingId}`);
                 const meetingSnap = await getDoc(meetingRef);
                 const meetingName = meetingSnap.exists() ? meetingSnap.data().name : 'Reunión desconocida';
                 const savedName = localStorage.getItem('teacherName');
                 if (savedName) {
                     statusDiv.innerHTML = `
-                        <!-- LOGO DEL CENTRO -->
-                        <img src="https://web.virgendelpasico.net/wp-content/uploads/2024/01/cropped-ncoop-scaled-1-300x253.jpg" alt="Logo Virgen del Pasico" class="app-logo">
+                        <img src="https://web.virgendelpasico.net/wp-content/uploads/2024/01/cropped-ncoop-scaled-1-300x253.jpg" alt="Logo" class="app-logo">
                         <p class="text-xl font-semibold mb-4 text-gray-700">Asistencia para: "${meetingName}"</p>
                         <p class="text-2xl text-gray-800 mb-2">¿Eres <strong class="font-bold">${savedName}</strong>?</p>
-                        <p class="text-gray-500 mb-6">Confirma para registrar tu asistencia.</p>
-                        <button id="confirm-btn" onclick="recordAttendance('${meetingId}', true, this)" class="w-full max-w-md mx-auto bg-green-500 text-white font-bold py-3 px-6 rounded-lg hover:bg-green-600 transition-colors text-lg">Sí, confirmar asistencia</button>
-                        <button onclick="showChangeTeacherForm('${meetingId}', '${meetingName}')" class="mt-4 text-sm text-indigo-600 hover:underline">No soy yo / Cambiar nombre</button>
+                        <button id="confirm-btn" onclick="recordAttendance('${meetingId}', true, this)" class="w-full max-w-md mx-auto bg-green-500 text-white font-bold py-3 px-6 rounded-lg hover:bg-green-600 transition-colors text-lg mb-4">Sí, confirmar asistencia</button>
+                        <br>
+                        <button onclick="showChangeTeacherForm('${meetingId}', '${meetingName}')" class="text-sm text-indigo-600 hover:underline">No soy yo / Cambiar nombre</button>
                     `;
                 } else {
                     showChangeTeacherForm(meetingId, meetingName);
                 }
             } else {
-                statusDiv.innerHTML = '<p class="text-red-500 font-bold text-xl">Código QR caducado o inválido. Por favor, escanea el código actual en la pantalla.</p>';
+                statusDiv.innerHTML = '<p class="text-red-500 font-bold text-xl">Código QR caducado o inválido.</p><p class="mt-2">Por favor, escanea el código que se muestra actualmente en la pantalla.</p>';
             }
         }
 
         window.showChangeTeacherForm = (meetingId, meetingName) => {
              document.getElementById('teacher-status-message').innerHTML = `
-                <!-- LOGO DEL CENTRO -->
-                <img src="https://web.virgendelpasico.net/wp-content/uploads/2024/01/cropped-ncoop-scaled-1-300x253.jpg" alt="Logo Virgen del Pasico" class="app-logo">
+                <img src="https://web.virgendelpasico.net/wp-content/uploads/2024/01/cropped-ncoop-scaled-1-300x253.jpg" alt="Logo" class="app-logo">
                 <p class="text-xl font-semibold mb-4 text-gray-700">Asistencia para: "${meetingName}"</p>
-                <p class="text-gray-600 mb-6">Introduce tu nombre completo para firmar. Solo tendrás que hacerlo una vez.</p>
+                <p class="text-gray-600 mb-6">Introduce tu nombre completo:</p>
                 <input type="text" id="teacher-name-input" placeholder="Nombre y Apellidos" class="w-full max-w-md mx-auto p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none mb-6">
                 <button id="confirm-new-btn" onclick="recordAttendance('${meetingId}', false, this)" class="w-full max-w-md mx-auto bg-green-500 text-white font-bold py-3 px-6 rounded-lg hover:bg-green-600 transition-colors text-lg">Confirmar Asistencia</button>
             `;
-            document.getElementById('teacher-name-input').value = localStorage.getItem('teacherName') || '';
-            document.getElementById('teacher-name-input').focus();
+            const input = document.getElementById('teacher-name-input');
+            input.value = localStorage.getItem('teacherName') || '';
+            input.focus();
         }
 
         window.recordAttendance = async (meetingId, isRecognized, buttonEl) => {
@@ -332,9 +364,8 @@
                 }
             }
 
+            // Obtener o crear ID de profesor
             let teacherId = localStorage.getItem('teacherId');
-            
-            // 1. Obtener/Crear teacherId
             if (!teacherId || !isRecognized) {
                 const teachersCol = collection(db, `teachers`);
                 const q = query(teachersCol, where("name", "==", name));
@@ -351,58 +382,50 @@
             const meetingSnap = await getDoc(meetingRef);
             if (!meetingSnap.exists()) {
                  buttonEl.disabled = false;
-                 buttonEl.innerHTML = originalButtonText;
+                 buttonEl.innerHTML = "Error: Reunión no encontrada";
                  return;
             }
             const meetingData = meetingSnap.data();
 
             try {
-                // 2. VERIFICACIÓN DE DOBLE REGISTRO
+                // Verificar duplicados
                 const existingAttendanceQuery = query(collection(db, `meetings/${meetingId}/attendees`), where("teacherId", "==", teacherId));
                 const existingSnapshot = await getDocs(existingAttendanceQuery);
 
                 if (!existingSnapshot.empty) {
-                    // YA REGISTRADO
                     document.getElementById('teacher-status-message').innerHTML = `
-                        <div class="text-yellow-500 mb-4">
-                            <svg class="w-20 h-20 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
-                        </div>
+                        <div class="text-yellow-500 mb-4"><svg class="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg></div>
                         <h2 class="text-2xl font-bold mb-2 text-gray-800">Ya registrado</h2>
-                        <p class="text-gray-600">Ya has confirmado tu asistencia para "${meetingData.name}" anteriormente.</p>
+                        <p class="text-gray-600">Ya constas en la lista de "${meetingData.name}".</p>
                     `;
-                    return; // Terminamos aquí, no guardamos nada nuevo
+                    return;
                 }
 
-                // 3. Si no existe, registramos
-                const attendeesCol = collection(db, `meetings/${meetingId}/attendees`);
-                await addDoc(attendeesCol, { name, teacherId, timestamp: serverTimestamp() });
-                const attendedMeetingsRef = doc(db, `teachers/${teacherId}/attendedMeetings/${meetingId}`);
-                await setDoc(attendedMeetingsRef, { meetingName: meetingData.name, meetingDate: meetingData.createdAt });
+                await addDoc(collection(db, `meetings/${meetingId}/attendees`), { name, teacherId, timestamp: serverTimestamp() });
+                await setDoc(doc(db, `teachers/${teacherId}/attendedMeetings/${meetingId}`), { meetingName: meetingData.name, meetingDate: meetingData.createdAt });
+                
                 localStorage.setItem('teacherName', name);
                 localStorage.setItem('teacherId', teacherId);
                 
                 document.getElementById('teacher-status-message').innerHTML = `
-                    <svg class="mx-auto h-16 w-16 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
+                    <svg class="mx-auto h-16 w-16 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                     <h2 class="text-2xl font-bold mt-4">¡Asistencia Registrada!</h2>
-                    <p class="text-gray-600 mt-2">Gracias. Tu asistencia para "${meetingData.name}" ha sido confirmada.</p>`;
+                    <p class="text-gray-600 mt-2">Gracias por confirmar tu asistencia a "${meetingData.name}".</p>`;
             } catch (error) { 
-                console.error("Error al registrar: ", error); 
-                buttonEl.disabled = false;
+                console.error("Registro fallido", error); 
+                buttonEl.disabled = false; 
                 buttonEl.innerHTML = originalButtonText;
             }
         };
 
+        // --- LÓGICA ADMIN (QR, Listas, Informes) ---
         const QR_LIFESPAN_MS = 30000;
         window.showQrCode = (meetingId, meetingName) => {
             document.getElementById('modal-title').textContent = `QR para: ${meetingName}`;
             const modalBody = document.getElementById('modal-body');
             modalBody.innerHTML = `
-                <!-- LOGO DEL CENTRO -->
-                <img src="https://web.virgendelpasico.net/wp-content/uploads/2024/01/cropped-ncoop-scaled-1-300x253.jpg" alt="Logo Virgen del Pasico" class="app-logo">
-
-                <p class="text-center text-gray-600 mb-4">Escanea este código. Se actualiza automáticamente cada ${QR_LIFESPAN_MS / 1000} segundos.</p>
+                <img src="https://web.virgendelpasico.net/wp-content/uploads/2024/01/cropped-ncoop-scaled-1-300x253.jpg" alt="Logo" class="app-logo">
+                <p class="text-center text-gray-600 mb-4">Escanea para firmar. Se actualiza cada ${QR_LIFESPAN_MS / 1000}s.</p>
                 <div id="qrcode-container" class="flex justify-center p-4 bg-white border rounded-lg relative">
                     <div id="qrcode"></div>
                     <p id="qr-expired-text" class="absolute inset-0 flex items-center justify-center bg-white bg-opacity-90 text-red-500 font-bold hidden">CADUCADO</p>
@@ -413,10 +436,11 @@
             const generateAndDisplayDynamicQR = async () => {
                 const expiredText = document.getElementById('qr-expired-text');
                 if (expiredText) expiredText.classList.remove('hidden');
+                
                 const tokenId = crypto.randomUUID();
                 const expiresAt = Timestamp.fromMillis(Date.now() + QR_LIFESPAN_MS);
-                const tokenRef = doc(db, `meetings/${meetingId}/validTokens`, tokenId);
-                await setDoc(tokenRef, { expiresAt });
+                await setDoc(doc(db, `meetings/${meetingId}/validTokens`, tokenId), { expiresAt });
+                
                 const url = `${window.location.href.split('?')[0]}?meeting=${meetingId}&token=${tokenId}`;
                 const qrContainer = document.getElementById('qrcode');
                 if(qrContainer) {
@@ -443,317 +467,178 @@
             document.body.classList.remove('modal-active');
         };
 
-        function openModal() {
-            document.getElementById('modal').classList.remove('hidden');
-            document.body.classList.add('modal-active');
-        }
-
         window.createMeeting = async () => {
-            const meetingNameInput = document.getElementById('meeting-name');
-            const name = meetingNameInput.value.trim();
+            const name = document.getElementById('meeting-name').value.trim();
             if (!name) return;
             try {
-                const meetingsCol = collection(db, `meetings`);
-                await addDoc(meetingsCol, { name, createdAt: serverTimestamp(), createdBy: userId });
-                meetingNameInput.value = '';
+                await addDoc(collection(db, `meetings`), { name, createdAt: serverTimestamp(), createdBy: userId });
+                document.getElementById('meeting-name').value = '';
             } catch (error) { console.error("Error creating meeting: ", error); }
         };
         
         window.deleteMeeting = async (meetingId) => {
-            if(!confirm("¿Estás seguro de que quieres eliminar esta sesión y todos sus registros de asistencia?")) return;
-            try {
-                await deleteDoc(doc(db, `meetings/${meetingId}`));
-                // Nota: Esto no borra las subcolecciones de asistentes por limitaciones de Firebase cliente,
-                // pero al borrar la reunión ya no aparecerá en listas.
-            } catch (error) {
-                console.error("Error deleting meeting", error);
-                alert("Error al borrar la reunión");
-            }
+            if(!confirm("¿Borrar esta sesión? Se perderá el acceso a la lista desde aquí.")) return;
+            try { await deleteDoc(doc(db, `meetings/${meetingId}`)); } catch (error) { alert("Error al borrar"); }
         }
 
         function listenForMeetings() {
-            const meetingsList = document.getElementById('meetings-list');
-            if (!meetingsList) return;
             onSnapshot(query(collection(db, `meetings`)), (snapshot) => {
-                const meetingsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                meetingsData.sort((a, b) => b.createdAt?.toMillis() - a.createdAt?.toMillis());
-                meetingsList.innerHTML = meetingsData.map(m => `
-                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center p-4 border rounded-lg">
-                        <div><p class="font-semibold">${m.name}</p><p class="text-sm text-gray-500">${m.createdAt ? new Date(m.createdAt.toDate()).toLocaleString('es-ES') : ''}</p></div>
-                        <div class="flex gap-2 mt-2 md:mt-0 items-center">
-                            <button onclick="showQrCode('${m.id}', '${m.name}')" class="bg-gray-200 text-sm font-bold py-2 px-4 rounded-lg hover:bg-gray-300">Mostrar QR</button>
-                            <button onclick="viewAttendance('${m.id}', '${m.name}')" class="bg-blue-500 text-white text-sm font-bold py-2 px-4 rounded-lg hover:bg-blue-600">Ver Asistentes</button>
-                            <button onclick="deleteMeeting('${m.id}')" class="text-red-500 hover:text-red-700 ml-2" title="Borrar sesión">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                </svg>
-                            </button>
+                const list = document.getElementById('meetings-list');
+                const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a, b) => b.createdAt?.toMillis() - a.createdAt?.toMillis());
+                list.innerHTML = data.map(m => `
+                    <div class="flex flex-col md:flex-row justify-between items-center p-4 border rounded-lg bg-gray-50">
+                        <div class="mb-2 md:mb-0"><p class="font-bold text-indigo-700">${m.name}</p><p class="text-xs text-gray-500">${m.createdAt ? new Date(m.createdAt.toDate()).toLocaleString('es-ES') : ''}</p></div>
+                        <div class="flex gap-2">
+                            <button onclick="showQrCode('${m.id}', '${m.name}')" class="bg-indigo-100 text-indigo-700 text-sm font-bold py-2 px-3 rounded hover:bg-indigo-200">QR</button>
+                            <button onclick="viewAttendance('${m.id}', '${m.name}')" class="bg-blue-100 text-blue-700 text-sm font-bold py-2 px-3 rounded hover:bg-blue-200">Lista</button>
+                            <button onclick="deleteMeeting('${m.id}')" class="text-red-400 hover:text-red-600"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
                         </div>
                     </div>`).join('');
             });
         }
+        
         function listenForTeachers() {
-            const select = document.getElementById('teacher-select');
-            if(!select) return;
             onSnapshot(query(collection(db, `teachers`)), (snapshot) => {
-                const teachers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                teachers.sort((a, b) => a.name.localeCompare(b.name));
-                allTeachersList = teachers; // Guardar para uso en modal manual
-                select.innerHTML = teachers.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+                const teachers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a, b) => a.name.localeCompare(b.name));
+                allTeachersList = teachers;
+                document.getElementById('teacher-select').innerHTML = teachers.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
             });
         }
         
-        window.selectAllTeachers = (select) => {
-            const teacherSelect = document.getElementById('teacher-select');
-            for(let i = 0; i < teacherSelect.options.length; i++) {
-                teacherSelect.options[i].selected = select;
-            }
+        window.selectAllTeachers = (val) => {
+            const opts = document.getElementById('teacher-select').options;
+            for(let i=0; i<opts.length; i++) opts[i].selected = val;
         }
 
         window.getTeacherAttendance = async () => {
-            const teacherSelect = document.getElementById('teacher-select');
-            const selectedTeacherIds = Array.from(teacherSelect.selectedOptions).map(opt => opt.value);
-            const startDate = document.getElementById('start-date').value;
-            const endDate = document.getElementById('end-date').value;
-            const resultsDiv = document.getElementById('teacher-attendance-results');
+            const selectedIds = Array.from(document.getElementById('teacher-select').selectedOptions).map(o => o.value);
+            const start = document.getElementById('start-date').value;
+            const end = document.getElementById('end-date').value;
+            const resDiv = document.getElementById('teacher-attendance-results');
             
-            if (selectedTeacherIds.length === 0) {
-                 resultsDiv.innerHTML = '<p class="text-red-500">Por favor, selecciona al menos un profesor.</p>';
-                 return;
-            }
-
-            resultsDiv.innerHTML = '<p>Buscando...</p>';
-            let finalHtml = '';
-            let allAttendanceData = [];
-
-            for (const teacherId of selectedTeacherIds) {
-                const teacherName = teacherSelect.querySelector(`option[value="${teacherId}"]`).text;
-                let q = query(collection(db, `teachers/${teacherId}/attendedMeetings`));
-                if (startDate) q = query(q, where("meetingDate", ">=", Timestamp.fromDate(new Date(startDate))));
-                if (endDate) {
-                    const endOfDay = new Date(endDate);
-                    endOfDay.setHours(23, 59, 59, 999);
-                    q = query(q, where("meetingDate", "<=", Timestamp.fromDate(endOfDay)));
-                }
-                const snapshot = await getDocs(q);
-                const data = snapshot.docs.map(doc => ({...doc.data(), teacherName: teacherName }));
-                allAttendanceData.push(...data);
+            if (selectedIds.length === 0) { resDiv.innerHTML = '<p class="text-red-500">Selecciona profesor(es).</p>'; return; }
+            resDiv.innerHTML = '<p>Buscando...</p>';
+            
+            let allData = [];
+            for (const tid of selectedIds) {
+                const tName = document.getElementById('teacher-select').querySelector(`option[value="${tid}"]`).text;
+                let q = query(collection(db, `teachers/${tid}/attendedMeetings`));
+                if (start) q = query(q, where("meetingDate", ">=", Timestamp.fromDate(new Date(start))));
+                if (end) { const e = new Date(end); e.setHours(23,59,59); q = query(q, where("meetingDate", "<=", Timestamp.fromDate(e))); }
+                const snap = await getDocs(q);
+                allData.push(...snap.docs.map(d => ({...d.data(), teacherName: tName})));
             }
             
-            if (allAttendanceData.length === 0) {
-                 resultsDiv.innerHTML = '<p class="text-gray-500">No hay registros para los profesores seleccionados en estas fechas.</p>';
-                 return;
-            }
+            if (allData.length === 0) { resDiv.innerHTML = '<p class="text-gray-500">Sin resultados.</p>'; return; }
             
-            // Agrupar por profesor
-            const groupedData = allAttendanceData.reduce((acc, item) => {
-                (acc[item.teacherName] = acc[item.teacherName] || []).push(item);
-                return acc;
-            }, {});
-
-            finalHtml += `<p class="mb-4 text-lg">Resultados encontrados: ${allAttendanceData.length}</p>`;
-
-            for(const teacherName in groupedData) {
-                const items = groupedData[teacherName];
-                items.sort((a, b) => b.meetingDate.toMillis() - a.meetingDate.toMillis());
-                finalHtml += `<div class="mb-6"><h4 class="font-bold text-lg mb-2">${teacherName} (${items.length} asistencias)</h4>
-                    <ul class="space-y-2 max-h-60 overflow-y-auto border p-2 rounded-md">${items.map(item => `<li class="flex justify-between p-2 bg-gray-50 rounded-md"><span>${item.meetingName}</span><span class="text-sm text-gray-500">${new Date(item.meetingDate.toDate()).toLocaleString('es-ES')}</span></li>`).join('')}</ul></div>`;
+            const grouped = allData.reduce((acc, i) => { (acc[i.teacherName] = acc[i.teacherName] || []).push(i); return acc; }, {});
+            let html = '';
+            for(const name in grouped) {
+                html += `<div class="mb-4 bg-gray-50 p-3 rounded"><h4 class="font-bold text-indigo-700">${name} (${grouped[name].length})</h4><ul class="text-sm text-gray-600 pl-4 list-disc">${grouped[name].map(i => `<li>${i.meetingName} <span class="text-xs text-gray-400">(${new Date(i.meetingDate.toDate()).toLocaleDateString()})</span></li>`).join('')}</ul></div>`;
             }
-
-            finalHtml += `<button onclick="exportTeacherAttendanceToCSV()" class="mt-4 bg-green-500 text-white font-bold py-2 px-4 rounded-lg w-full">Exportar Selección a CSV</button>`;
-            
-            resultsDiv.innerHTML = finalHtml;
-
-            // Guardar datos para exportar
-            window.teacherReportDataForExport = allAttendanceData;
+            window.teacherReportDataForExport = allData;
+            html += `<button onclick="exportTeacherAttendanceToCSV()" class="w-full bg-green-500 text-white font-bold py-2 rounded mt-2">Exportar CSV</button>`;
+            resDiv.innerHTML = html;
         };
 
         window.exportTeacherAttendanceToCSV = () => {
             const data = window.teacherReportDataForExport;
-            if(!data || data.length === 0) return;
-
-            data.sort((a,b) => a.teacherName.localeCompare(b.teacherName) || b.meetingDate.toMillis() - a.meetingDate.toMillis());
-            
-            let csvContent = "data:text/csv;charset=utf-8,Profesor,Reunion,Fecha\n";
-            data.forEach(item => {
-                csvContent += `"${item.teacherName}","${item.meetingName}","${new Date(item.meetingDate.seconds * 1000).toLocaleString('es-ES')}"\n`;
-            });
-            const link = document.createElement("a");
-            link.setAttribute("href", encodeURI(csvContent));
-            link.setAttribute("download", `asistencia_individual.csv`);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+            let csv = "Profesor,Reunion,Fecha\n" + data.map(i => `"${i.teacherName}","${i.meetingName}","${new Date(i.meetingDate.seconds*1000).toLocaleString()}"`).join("\n");
+            const link = document.createElement("a"); link.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv); link.download = `informe_profesores.csv`; link.click();
         };
 
-        window.viewAttendance = (meetingId, meetingName) => {
-             document.getElementById('modal-title').textContent = `Asistencia para: ${meetingName}`;
-             
-             // Inyectar HTML para añadir manualmente
-             const manualAddHtml = `
-                <div class="bg-gray-100 p-3 rounded-lg mb-4">
-                    <p class="text-sm font-semibold mb-2">Registro Manual (Admin):</p>
-                    <div class="flex gap-2">
-                        <select id="manual-teacher-select" class="flex-grow p-2 border rounded text-sm">
-                            <option value="">Seleccionar profesor existente...</option>
-                            ${allTeachersList.map(t => `<option value="${t.name}">${t.name}</option>`).join('')}
-                        </select>
-                    </div>
-                    <div class="flex gap-2 mt-2">
-                         <input type="text" id="manual-teacher-name" placeholder="O escribe nombre nuevo..." class="flex-grow p-2 border rounded text-sm">
-                         <button onclick="manualRecordAttendance('${meetingId}')" class="bg-indigo-600 text-white text-xs font-bold py-2 px-3 rounded hover:bg-indigo-700">Añadir</button>
-                    </div>
+        window.viewAttendance = (mId, mName) => {
+            document.getElementById('modal-title').textContent = mName;
+            document.getElementById('modal-body').innerHTML = `
+                <div class="bg-indigo-50 p-3 rounded mb-4 text-sm">
+                    <div class="flex gap-2"><select id="manual-teacher-select" class="flex-grow border rounded p-1"><option value="">-- Añadir manual --</option>${allTeachersList.map(t=>`<option value="${t.name}">${t.name}</option>`).join('')}</select></div>
+                    <div class="flex gap-2 mt-2"><input id="manual-teacher-name" placeholder="O nuevo nombre..." class="flex-grow border rounded p-1"><button onclick="manualRecordAttendance('${mId}')" class="bg-indigo-600 text-white px-3 rounded">Añadir</button></div>
                 </div>
-                <div id="attendance-list-container"><p>Cargando...</p></div>
-             `;
-             
-            document.getElementById('modal-body').innerHTML = manualAddHtml;
+                <div id="attendance-list-container">Cargando...</div>`;
             openModal();
-
-            const attendeesQuery = query(collection(db, `meetings/${meetingId}/attendees`));
-            onSnapshot(attendeesQuery, (snapshot) => {
-                const container = document.getElementById('attendance-list-container');
-                if (!container) return;
-                if (snapshot.empty) {
-                    container.innerHTML = '<p class="text-gray-500">Nadie ha registrado su asistencia todavía.</p>';
-                    return;
-                }
-                const attendeesData = snapshot.docs.map(doc => doc.data());
-                attendeesData.sort((a, b) => a.timestamp?.toMillis() - b.timestamp?.toMillis());
-                container.innerHTML = `
-                    <p class="mb-4">Total: <strong>${attendeesData.length}</strong></p>
-                    <ul class="space-y-2 max-h-80 overflow-y-auto">${attendeesData.map(attendee => `
-                        <li class="flex justify-between p-2 bg-gray-50 rounded-md">
-                            <span>${attendee.name}</span>
-                            <span class="text-sm text-gray-500">${attendee.timestamp ? new Date(attendee.timestamp.toMillis()).toLocaleTimeString('es-ES') : ''}</span>
-                        </li>`).join('')}
-                    </ul>`;
+            onSnapshot(query(collection(db, `meetings/${mId}/attendees`)), (snap) => {
+                const list = document.getElementById('attendance-list-container');
+                if(!list) return;
+                const data = snap.docs.map(d => d.data()).sort((a,b) => a.timestamp - b.timestamp);
+                list.innerHTML = `<p class="mb-2 font-bold">Total: ${data.length}</p><ul class="max-h-60 overflow-y-auto">${data.map(a => `<li class="flex justify-between border-b py-2"><span>${a.name}</span><span class="text-xs text-gray-400">${a.timestamp?.toDate().toLocaleTimeString()||''}</span></li>`).join('')}</ul>`;
             });
-        };
-        
-        window.manualRecordAttendance = async (meetingId) => {
-            const select = document.getElementById('manual-teacher-select');
-            const input = document.getElementById('manual-teacher-name');
-            let name = select.value || input.value.trim();
-            
-            if (!name) {
-                alert("Por favor, selecciona un profesor o escribe un nombre.");
-                return;
-            }
-            
-            // Reutilizamos la lógica de recordAttendance pero adaptada para admin (sin localStorage del admin)
-            // Buscar si existe el profesor
-            let teacherId;
-            const teachersCol = collection(db, `teachers`);
-            const q = query(teachersCol, where("name", "==", name));
-            const querySnapshot = await getDocs(q);
-            if (querySnapshot.empty) {
-                const newTeacherRef = await addDoc(teachersCol, { name: name });
-                teacherId = newTeacherRef.id;
-            } else {
-                teacherId = querySnapshot.docs[0].id;
-            }
-            
-            const meetingRef = doc(db, `meetings/${meetingId}`);
-            const meetingSnap = await getDoc(meetingRef);
-            if (!meetingSnap.exists()) return;
-            const meetingData = meetingSnap.data();
+        }
 
+        window.manualRecordAttendance = async (mId) => {
+            const sel = document.getElementById('manual-teacher-select');
+            const inp = document.getElementById('manual-teacher-name');
+            const name = sel.value || inp.value.trim();
+            if(!name) return alert("Elige o escribe un nombre");
+            
+            // Buscar/Crear teacher
+            let tid;
+            const q = query(collection(db,'teachers'), where("name","==",name));
+            const snap = await getDocs(q);
+            if(snap.empty) { const ref = await addDoc(collection(db,'teachers'),{name}); tid = ref.id; }
+            else tid = snap.docs[0].id;
+
+            // Registrar
+            const mRef = await getDoc(doc(db,`meetings/${mId}`));
+            const mData = mRef.data();
             try {
-                const attendeesCol = collection(db, `meetings/${meetingId}/attendees`);
-                await addDoc(attendeesCol, { name, teacherId, timestamp: serverTimestamp() });
-                const attendedMeetingsRef = doc(db, `teachers/${teacherId}/attendedMeetings/${meetingId}`);
-                await setDoc(attendedMeetingsRef, { meetingName: meetingData.name, meetingDate: meetingData.createdAt });
-                
-                alert(`Asistencia registrada para: ${name}`);
-                select.value = "";
-                input.value = "";
-            } catch (error) {
-                console.error("Error manual add", error);
-                alert("Error al registrar asistencia manual.");
-            }
-        };
-        
-        // --- NUEVAS FUNCIONES PARA INFORME GENERAL ---
+                await addDoc(collection(db,`meetings/${mId}/attendees`),{name, teacherId:tid, timestamp: serverTimestamp()});
+                await setDoc(doc(db,`teachers/${tid}/attendedMeetings/${mId}`),{meetingName:mData.name, meetingDate:mData.createdAt});
+                alert("Añadido");
+            } catch(e) { console.error(e); alert("Error"); }
+        }
+
         window.getGeneralAttendance = async () => {
-            const startDate = document.getElementById('general-start-date').value;
-            const endDate = document.getElementById('general-end-date').value;
-            const resultsDiv = document.getElementById('general-attendance-results');
-            resultsDiv.innerHTML = '<p>Generando informe, esto puede tardar unos segundos...</p>';
-
-            const teachersSnap = await getDocs(collection(db, 'teachers'));
-            const teachers = teachersSnap.docs.map(doc => ({ id: doc.id, name: doc.data().name }));
-            teachers.sort((a, b) => a.name.localeCompare(b.name));
-
-            let meetingsQuery = query(collection(db, 'meetings'));
-            if (startDate) meetingsQuery = query(meetingsQuery, where("createdAt", ">=", Timestamp.fromDate(new Date(startDate))));
-            if (endDate) {
-                 const endOfDay = new Date(endDate);
-                 endOfDay.setHours(23, 59, 59, 999);
-                 meetingsQuery = query(meetingsQuery, where("createdAt", "<=", Timestamp.fromDate(endOfDay)));
-            }
-            const meetingsSnap = await getDocs(meetingsQuery);
-            const meetings = meetingsSnap.docs.map(doc => ({ id: doc.id, name: doc.data().name, date: doc.data().createdAt.toDate() }));
-            meetings.sort((a, b) => a.date - b.date);
-
-            const attendancePromises = teachers.map(async (teacher) => {
-                const attendedMeetingsSnap = await getDocs(collection(db, `teachers/${teacher.id}/attendedMeetings`));
-                const attendedMeetingIds = new Set(attendedMeetingsSnap.docs.map(doc => doc.id));
-                return { ...teacher, attendedMeetingIds };
-            });
-
-            const fullReportData = await Promise.all(attendancePromises);
-
-            let summaryHtml = '<ul class="space-y-2">';
-            fullReportData.forEach(teacherData => {
-                const attendedCount = [...teacherData.attendedMeetingIds].filter(id => meetings.some(m => m.id === id)).length;
-                summaryHtml += `<li class="flex justify-between p-2 bg-gray-50 rounded-md"><span>${teacherData.name}</span><span class="font-bold">${attendedCount} / ${meetings.length}</span></li>`;
-            });
-            summaryHtml += '</ul>';
+            const resDiv = document.getElementById('general-attendance-results');
+            resDiv.innerHTML = 'Generando...';
+            const start = document.getElementById('general-start-date').value;
+            const end = document.getElementById('general-end-date').value;
             
-            generalReportDataForExport = {report: fullReportData, meetings: meetings.map(m => ({...m, date: m.date.toISOString()})) };
-
-            summaryHtml += `<button id="export-general-btn" class="mt-6 w-full bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700">Exportar Informe Detallado a CSV</button>`;
-
-            resultsDiv.innerHTML = summaryHtml;
-            document.getElementById('export-general-btn').addEventListener('click', exportGeneralAttendanceToCSV);
-        };
-        
-        function exportGeneralAttendanceToCSV() {
-            if (!generalReportDataForExport) {
-                console.error("No hay datos para exportar.");
-                return;
-            }
-            const { report, meetings } = generalReportDataForExport;
+            const tSnap = await getDocs(collection(db,'teachers'));
+            const teachers = tSnap.docs.map(d=>({id:d.id, name:d.data().name})).sort((a,b)=>a.name.localeCompare(b.name));
             
-            let csvContent = "Profesor,";
-            meetings.forEach(meeting => {
-                csvContent += `"${meeting.name} (${new Date(meeting.date).toLocaleDateString('es-ES')})",`;
-            });
-            csvContent += "Total\n";
+            let mQuery = query(collection(db,'meetings'));
+            if(start) mQuery = query(mQuery, where("createdAt", ">=", Timestamp.fromDate(new Date(start))));
+            if(end) { const e = new Date(end); e.setHours(23,59,59); mQuery = query(mQuery, where("createdAt", "<=", Timestamp.fromDate(e))); }
+            const mSnap = await getDocs(mQuery);
+            const meetings = mSnap.docs.map(d=>({id:d.id, ...d.data(), date:d.data().createdAt.toDate()})).sort((a,b)=>a.date-b.date);
 
-            report.forEach(teacherData => {
-                csvContent += `"${teacherData.name}",`;
-                let total = 0;
-                meetings.forEach(meeting => {
-                    if (teacherData.attendedMeetingIds.has(meeting.id)) {
-                        csvContent += "X,";
-                        total++;
-                    } else {
-                        csvContent += ",";
-                    }
+            const report = await Promise.all(teachers.map(async t => {
+                const attSnap = await getDocs(collection(db,`teachers/${t.id}/attendedMeetings`));
+                return { ...t, attended: new Set(attSnap.docs.map(d=>d.id)) };
+            }));
+
+            let html = '<div class="overflow-x-auto"><table class="min-w-full text-xs text-left"><thead><tr><th class="border p-1">Profesor</th>' + meetings.map(m=>`<th class="border p-1 transform -rotate-45 h-24 align-bottom">${m.name}<br><span class="text-gray-400">${m.date.toLocaleDateString()}</span></th>`).join('') + '<th class="border p-1 font-bold">Total</th></tr></thead><tbody>';
+            
+            report.forEach(t => {
+                let count = 0;
+                html += `<tr><td class="border p-1 font-medium">${t.name}</td>`;
+                meetings.forEach(m => {
+                    if(t.attended.has(m.id)) { html += '<td class="border p-1 text-center bg-green-100 text-green-700 font-bold">X</td>'; count++; }
+                    else html += '<td class="border p-1"></td>';
                 });
-                csvContent += `${total}\n`;
+                html += `<td class="border p-1 font-bold text-center">${count}</td></tr>`;
             });
-
-            const link = document.createElement("a");
-            link.setAttribute("href", 'data:text/csv;charset=utf-8,' + encodeURIComponent(csvContent));
-            link.setAttribute("download", `informe_general_asistencia.csv`);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+            html += '</tbody></table></div>';
+            
+            generalReportDataForExport = { report, meetings };
+            html += `<button onclick="exportGeneralAttendanceToCSV()" class="mt-4 w-full bg-green-500 text-white font-bold py-2 rounded">Exportar CSV</button>`;
+            resDiv.innerHTML = html;
         };
 
+        window.exportGeneralAttendanceToCSV = () => {
+            const { report, meetings } = generalReportDataForExport;
+            let csv = "Profesor," + meetings.map(m=>`"${m.name} (${m.date.toLocaleDateString()})"`).join(",") + ",Total\n";
+            report.forEach(t => {
+                let count = 0;
+                csv += `"${t.name}",` + meetings.map(m => {
+                    if(t.attended.has(m.id)) { count++; return "X"; } else return "";
+                }).join(",") + `,${count}\n`;
+            });
+            const link = document.createElement("a"); link.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv); link.download = `resumen_general.csv`; link.click();
+        }
+
+        function openModal() { document.getElementById('modal').classList.remove('hidden'); document.body.classList.add('modal-active'); }
+        window.closeModal = () => { clearInterval(qrInterval); document.getElementById('modal').classList.add('hidden'); document.body.classList.remove('modal-active'); }
     </script>
 </body>
 </html>
